@@ -539,3 +539,4 @@ end)
 
 hienThiTrang("TRANG_CHU")
 hienThongBao("Kiên Script M1 — Sẵn sàng hoạt động!")
+	
