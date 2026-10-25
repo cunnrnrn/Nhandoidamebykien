@@ -21,6 +21,8 @@ local isLocked = false
 pcall(function()
     local cu = playerGui:FindFirstChild("KienMenuM1")
     if cu then cu:Destroy() end
+    local cuPop = playerGui:FindFirstChild("PopoutFrameKien")
+    if cuPop then cuPop:Destroy() end
 end)
 
 local Mau = {
@@ -90,37 +92,43 @@ local screenGui = tao("ScreenGui", {
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, playerGui)
 
+-- THÔNG BÁO NỔI 7 SẮC CẦU VỒNG (RAINBOW TEXT)
 local thongBaoLabel = tao("TextLabel", {
     Name = "ThongBaoNoi",
     AnchorPoint = Vector2.new(0.5, 0),
     Position = UDim2.new(0.5, 0, 0, 12),
-    Size = UDim2.fromOffset(240, 32),
+    Size = UDim2.fromOffset(280, 36),
     BackgroundColor3 = Mau.The,
-    TextColor3 = Mau.XanhNhe,
+    TextColor3 = Color3.fromRGB(255, 255, 255),
     Text = "",
-    TextSize = 12,
+    TextSize = 13,
     Font = Enum.Font.GothamBold,
     Visible = false,
     ZIndex = 100,
 }, screenGui)
-boGoc(thongBaoLabel, 8)
-vien(thongBaoLabel, Mau.Do, 1)
+boGoc(thongBaoLabel, 10)
+vien(thongBaoLabel, Mau.Do, 1.5)
 
-local tbPhienBan = 0
+local cauVongConnection
 local function hienThongBao(noiDung)
-    tbPhienBan += 1
-    local phienBanHienTai = tbPhienBan
-    thongBaoLabel.Text = "  " .. noiDung
+    thongBaoLabel.Text = noiDung
     thongBaoLabel.Visible = true
     thongBaoLabel.TextTransparency = 1
     thongBaoLabel.BackgroundTransparency = 1
-    hieuDung(thongBaoLabel, 0.2, {TextTransparency = 0, BackgroundTransparency = 0.2})
-    task.delay(1.2, function()
-        if tbPhienBan == phienBanHienTai then
-            hieuDung(thongBaoLabel, 0.2, {TextTransparency = 1, BackgroundTransparency = 1})
-            task.wait(0.22)
-            if tbPhienBan == phienBanHienTai then thongBaoLabel.Visible = false end
+    hieuDung(thongBaoLabel, 0.2, {TextTransparency = 0, BackgroundTransparency = 0.15})
+    
+    if cauVongConnection then cauVongConnection:Disconnect() end
+    cauVongConnection = RunService.RenderStepped:Connect(function()
+        if thongBaoLabel.Visible then
+            thongBaoLabel.TextColor3 = Color3.fromHSV(tick() % 5 / 5, 1, 1)
         end
+    end)
+
+    task.delay(1.5, function()
+        if cauVongConnection then cauVongConnection:Disconnect() cauVongConnection = nil end
+        hieuDung(thongBaoLabel, 0.2, {TextTransparency = 1, BackgroundTransparency = 1})
+        task.wait(0.22)
+        thongBaoLabel.Visible = false
     end)
 end
 
@@ -302,143 +310,91 @@ local khungCuon = tao("ScrollingFrame", {
 
 tao("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, khungCuon)
 
+-- BẢNG TÁCH RIÊNG (MINI FLOAT PANEL CHUẨN M1 XỊN SÒ)
 local PopoutFrame = tao("Frame", {
-    Name = "PopoutFrame",
-    Size = UDim2.fromOffset(220, 260),
+    Name = "PopoutFrameKien",
+    Size = UDim2.fromOffset(200, 160),
     Position = UDim2.new(0.65, 0, 0.35, 0),
-    BackgroundColor3 = Mau.Nen,
+    BackgroundColor3 = Color3.fromRGB(12, 12, 16),
     BorderSizePixel = 0,
     Visible = false,
     ClipsDescendants = true,
 }, screenGui)
-boGoc(PopoutFrame, 14)
-vien(PopoutFrame, Mau.Do, 1.5)
+boGoc(PopoutFrame, 12)
+vien(PopoutFrame, Mau.Do, 1.2, 0.2)
 makeDraggable(PopoutFrame)
 
 local PopoutTopBar = tao("Frame", {
-    Size = UDim2.new(1, 0, 0, 35),
+    Size = UDim2.new(1, 0, 0, 30),
     BackgroundColor3 = Mau.Panel,
     BorderSizePixel = 0,
 }, PopoutFrame)
+boGoc(PopoutTopBar, 12)
 
 tao("TextLabel", {
-    Position = UDim2.new(0, 12, 0, 0),
-    Size = UDim2.new(1, -12, 1, 0),
+    Position = UDim2.new(0, 10, 0, 0),
+    Size = UDim2.new(1, -10, 1, 0),
     BackgroundTransparency = 1,
-    Text = "📌 ĐIỀU KHIỂN AUTO CHẠY",
+    Text = "⚡ ĐIỀU KHIỂN NHANH",
     TextColor3 = Mau.Trang,
     TextXAlignment = Enum.TextXAlignment.Left,
     Font = Enum.Font.GothamBold,
-    TextSize = 11,
+    TextSize = 10,
 }, PopoutTopBar)
 
 local PopoutContent = tao("Frame", {
-    Position = UDim2.new(0, 10, 0, 45),
-    Size = UDim2.new(1, -20, 1, -55),
+    Position = UDim2.new(0, 10, 0, 38),
+    Size = UDim2.new(1, -20, 1, -44),
     BackgroundTransparency = 1,
 }, PopoutFrame)
 
-tao("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, PopoutContent)
-local PopoutBtn, SaveBase1Btn, SaveBase2Btn, SelectBaseBtn, AutoWalkBtn, StopWalkBtn, StatusLabel
+tao("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, PopoutContent)
+local GoTo1Btn, GoTo2Btn, StopBtn
 
-local function taoControlAuto(parent)
+local function taoControlNhanh(parent)
     local btn1 = tao("TextButton", {
         Size = UDim2.new(1, 0, 0, 32),
-        BackgroundColor3 = Color3.fromRGB(100, 50, 150),
-        Text = "📌 Tách Bảng Auto Ra Ngoài",
+        BackgroundColor3 = Mau.Panel,
+        Text = "🚀 Chạy Về Base 1",
         TextColor3 = Mau.Trang,
         Font = Enum.Font.GothamBold,
         TextSize = 11,
         AutoButtonColor = false,
     }, parent)
-    boGoc(btn1, 8)
-    vien(btn1, Mau.Do, 1, 0.5)
+    boGoc(btn1, 6)
+    vien(btn1, Mau.Do, 1, 0.4)
 
     local btn2 = tao("TextButton", {
         Size = UDim2.new(1, 0, 0, 32),
         BackgroundColor3 = Mau.Panel,
-        Text = "📍 Lưu Vị Trí Base 1",
+        Text = "🚀 Chạy Về Base 2",
         TextColor3 = Mau.Trang,
         Font = Enum.Font.GothamBold,
         TextSize = 11,
         AutoButtonColor = false,
     }, parent)
-    boGoc(btn2, 8)
-    vien(btn2, Mau.Do, 1, 0.5)
+    boGoc(btn2, 6)
+    vien(btn2, Mau.Do, 1, 0.4)
 
     local btn3 = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 32),
-        BackgroundColor3 = Mau.Panel,
-        Text = "📍 Lưu Vị Trí Base 2",
-        TextColor3 = Mau.Trang,
-        Font = Enum.Font.GothamBold,
-        TextSize = 11,
-        AutoButtonColor = false,
-    }, parent)
-    boGoc(btn3, 8)
-    vien(btn3, Mau.Do, 1, 0.5)
-
-    local btn4 = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 32),
-        BackgroundColor3 = Mau.DoDam,
-        Text = "🎯 Đang Chọn: Base 1",
-        TextColor3 = Mau.Trang,
-        Font = Enum.Font.GothamBold,
-        TextSize = 11,
-        AutoButtonColor = false,
-    }, parent)
-    boGoc(btn4, 8)
-    vien(btn4, Mau.Do, 1, 0.5)
-
-    local btn5 = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 36),
-        BackgroundColor3 = Color3.fromRGB(40, 140, 80),
-        Text = "🚀 BẮT ĐẦU TỰ CHẠY: OFF",
-        TextColor3 = Mau.Trang,
-        Font = Enum.Font.GothamBold,
-        TextSize = 12,
-        AutoButtonColor = false,
-    }, parent)
-    boGoc(btn5, 8)
-    vien(btn5, Mau.Trang, 1, 0.3)
-
-    local btn6 = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 36),
+        Size = UDim2.new(1, 0, 0, 34),
         BackgroundColor3 = Color3.fromRGB(180, 40, 40),
-        Text = "🛑 DỪNG LẠI NGAY LẬP TỨC",
+        Text = "🛑 Dừng Lại Ngay",
         TextColor3 = Mau.Trang,
         Font = Enum.Font.GothamBold,
-        TextSize = 12,
+        TextSize = 11,
         AutoButtonColor = false,
     }, parent)
-    boGoc(btn6, 8)
-    vien(btn6, Mau.Trang, 1, 0.3)
+    boGoc(btn3, 6)
+    vien(btn3, Mau.Trang, 1, 0.3)
 
-    local lbl = tao("TextLabel", {
-        Size = UDim2.new(1, 0, 0, 24),
-        BackgroundTransparency = 1,
-        Text = "Base 1: Chưa lưu | Base 2: Chưa lưu",
-        TextColor3 = Mau.Mo,
-        TextXAlignment = Enum.TextXAlignment.Center,
-        Font = Enum.Font.GothamMedium,
-        TextSize = 10,
-    }, parent)
-
-    return btn1, btn2, btn3, btn4, btn5, btn6, lbl
+    return btn1, btn2, btn3
 end
 
-local p1, p2, p3, p4, p5, p6, plbl = taoControlAuto(PopoutContent)
+local g1, g2, g3 = taoControlNhanh(PopoutContent)
 
 local function stopWalking()
     isAutoWalking = false
-    if p5 then
-        p5.Text = "🚀 BẮT ĐẦU TỰ CHẠY: OFF"
-        p5.BackgroundColor3 = Color3.fromRGB(40, 140, 80)
-    end
-    if AutoWalkBtn then
-        AutoWalkBtn.Text = "🚀 BẮT ĐẦU TỰ CHẠY: OFF"
-        AutoWalkBtn.BackgroundColor3 = Color3.fromRGB(40, 140, 80)
-    end
     if moveConnection then
         moveConnection:Disconnect()
         moveConnection = nil
@@ -448,14 +404,16 @@ local function stopWalking()
     if humanoid then humanoid:Move(Vector3.new(0, 0, 0), false) end
 end
 
-local function startAbsoluteWorldMovement()
+local function startMoveTo(targetPos, tenBase)
     if moveConnection then moveConnection:Disconnect() end
+    isAutoWalking = true
+    hienThongBao("Đang tự chạy về " .. tenBase .. "...")
+
     moveConnection = RunService.RenderStepped:Connect(function()
         if not isAutoWalking then stopWalking() return end
         local char = nguoiDung.Character
         local humanoid = char and char:FindFirstChildOfClass("Humanoid")
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        local targetPos = basePositions[selectedBase]
 
         if not targetPos or not humanoid or not hrp or humanoid.Health <= 0 then
             stopWalking()
@@ -467,99 +425,121 @@ local function startAbsoluteWorldMovement()
         local dirVector = Vector3.new(targetPos.X - currentPos.X, 0, targetPos.Z - currentPos.Z)
         if dirVector.Magnitude < 4 then
             stopWalking()
-            hienThongBao("Đã đến " .. selectedBase .. " thành công!")
+            hienThongBao("Đã đến " .. tenBase .. " thành công!")
             return
         end
         humanoid:Move(dirVector.Unit, false)
     end)
 end
 
-local function ganSuKienChoNhom(b1, b2, b3, b4, b5, b6, lbl)
+local function ganSuKienNhanh(b1, b2, b3)
     b1.MouseButton1Click:Connect(function()
-        isPoppedOut = not isPoppedOut
-        if isPoppedOut then
-            PopoutFrame.Visible = true
-            b1.Text = "📌 Đã Tách Bảng Ra Ngoài"
-            if PopoutBtn then PopoutBtn.Text = "📌 Đã Tách Bảng Ra Ngoài" end
-            hienThongBao("Đã tách bảng Auto thành công!")
-        else
-            PopoutFrame.Visible = false
-            b1.Text = "📌 Tách Bảng Auto Ra Ngoài"
-            if PopoutBtn then PopoutBtn.Text = "📌 Tách Bảng Auto Ra Ngoài" end
-            hienThongBao("Đã thu hồi bảng Auto về Menu!")
+        if not basePositions.Base1 then
+            hienThongBao("Chưa lưu tọa độ Base 1!")
+            return
         end
+        startMoveTo(basePositions.Base1, "Base 1")
     end)
 
     b2.MouseButton1Click:Connect(function()
+        if not basePositions.Base2 then
+            hienThongBao("Chưa lưu tọa độ Base 2!")
+            return
+        end
+        startMoveTo(basePositions.Base2, "Base 2")
+    end)
+
+    b3.MouseButton1Click:Connect(function()
+        stopWalking()
+        hienThongBao("🛑 Đã dừng lại ngay lập tức!")
+    end)
+end
+
+ganSuKienNhanh(g1, g2, g3)
+
+-- Giao diện quản lý trong Menu chính (Tab Auto Base)
+local function xayDungTabAuto(parent)
+    local save1 = tao("TextButton", {
+        Size = UDim2.new(1, 0, 0, 36),
+        BackgroundColor3 = Mau.Panel,
+        Text = "📍 Lưu Tọa Độ Vị Trí 1",
+        TextColor3 = Mau.Trang,
+        Font = Enum.Font.GothamBold,
+        TextSize = 12,
+        AutoButtonColor = false,
+    }, parent)
+    boGoc(save1, 8)
+    vien(save1, Mau.Do, 1, 0.4)
+
+    local save2 = tao("TextButton", {
+        Size = UDim2.new(1, 0, 0, 36),
+        BackgroundColor3 = Mau.Panel,
+        Text = "📍 Lưu Tọa Độ Vị Trí 2",
+        TextColor3 = Mau.Trang,
+        Font = Enum.Font.GothamBold,
+        TextSize = 12,
+        AutoButtonColor = false,
+    }, parent)
+    boGoc(save2, 8)
+    vien(save2, Mau.Do, 1, 0.4)
+
+    local tachBtn = tao("TextButton", {
+        Size = UDim2.new(1, 0, 0, 36),
+        BackgroundColor3 = Color3.fromRGB(100, 50, 150),
+        Text = "📌 Tách Bảng Điều Khiển Nhanh Ra Ngoài",
+        TextColor3 = Mau.Trang,
+        Font = Enum.Font.GothamBold,
+        TextSize = 12,
+        AutoButtonColor = false,
+    }, parent)
+    boGoc(tachBtn, 8)
+    vien(tachBtn, Mau.Do, 1, 0.4)
+
+    local lbl = tao("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 24),
+        BackgroundTransparency = 1,
+        Text = "Base 1: Chưa lưu | Base 2: Chưa lưu",
+        TextColor3 = Mau.Mo,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        Font = Enum.Font.GothamMedium,
+        TextSize = 11,
+    }, parent)
+
+    save1.MouseButton1Click:Connect(function()
         local char = nguoiDung.Character or nguoiDung.CharacterAdded:Wait()
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if hrp then
             basePositions.Base1 = hrp.Position
-            b2.Text = "📍 Base 1: Đã lưu vị trí"
-            if SaveBase1Btn then SaveBase1Btn.Text = "📍 Base 1: Đã lưu vị trí" end
-            local txt = "Base 1: Đã lưu | Base 2: " .. (basePositions.Base2 and "Đã lưu" or "Chưa")
-            lbl.Text = txt
-            if StatusLabel then StatusLabel.Text = txt end
+            save1.Text = "📍 Vị Trí 1: Đã lưu"
+            lbl.Text = "Base 1: Đã lưu | Base 2: " .. (basePositions.Base2 and "Đã lưu" or "Chưa")
             hienThongBao("Đã lưu Base 1 thành công!")
         end
     end)
 
-    b3.MouseButton1Click:Connect(function()
+    save2.MouseButton1Click:Connect(function()
         local char = nguoiDung.Character or nguoiDung.CharacterAdded:Wait()
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if hrp then
             basePositions.Base2 = hrp.Position
-            b3.Text = "📍 Base 2: Đã lưu vị trí"
-            if SaveBase2Btn then SaveBase2Btn.Text = "📍 Base 2: Đã lưu vị trí" end
-            local txt = "Base 1: " .. (basePositions.Base1 and "Đã lưu" or "Chưa") .. " | Base 2: Đã lưu"
-            lbl.Text = txt
-            if StatusLabel then StatusLabel.Text = txt end
+            save2.Text = "📍 Vị Trí 2: Đã lưu"
+            lbl.Text = "Base 1: " .. (basePositions.Base1 and "Đã lưu" or "Chưa") .. " | Base 2: Đã lưu"
             hienThongBao("Đã lưu Base 2 thành công!")
         end
     end)
 
-    b4.MouseButton1Click:Connect(function()
-        if selectedBase == "Base1" then
-            selectedBase = "Base2"
-            b4.Text = "🎯 Đang Chọn: Base 2"
-            if SelectBaseBtn then SelectBaseBtn.Text = "🎯 Đang Chọn: Base 2" end
-            hienThongBao("Đã chuyển sang: Base 2")
+    tachBtn.MouseButton1Click:Connect(function()
+        isPoppedOut = not isPoppedOut
+        if isPoppedOut then
+            PopoutFrame.Visible = true
+            tachBtn.Text = "📌 Đã Tách Bảng Ra Ngoài"
+            hienThongBao("Đã tách bảng thành công!")
         else
-            selectedBase = "Base1"
-            b4.Text = "🎯 Đang Chọn: Base 1"
-            if SelectBaseBtn then SelectBaseBtn.Text = "🎯 Đang Chọn: Base 1" end
-            hienThongBao("Đã chuyển sang: Base 1")
+            PopoutFrame.Visible = false
+            tachBtn.Text = "📌 Tách Bảng Điều Khiển Nhanh Ra Ngoài"
+            hienThongBao("Đã thu hồi bảng về Menu!")
         end
-    end)
-
-    b5.MouseButton1Click:Connect(function()
-        if not basePositions[selectedBase] then
-            hienThongBao("Chưa lưu tọa độ " .. selectedBase .. "!")
-            return
-        end
-        isAutoWalking = not isAutoWalking
-        if isAutoWalking then
-            b5.Text = "🚀 BẮT ĐẦU TỰ CHẠY: ON"
-            b5.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-            if AutoWalkBtn then
-                AutoWalkBtn.Text = "🚀 BẮT ĐẦU TỰ CHẠY: ON"
-                AutoWalkBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-            end
-            hienThongBao("Đang chạy đến " .. selectedBase .. "...")
-            startAbsoluteWorldMovement()
-        else
-            stopWalking()
-            hienThongBao("Đã tắt tự chạy!")
-        end
-    end)
-
-    b6.MouseButton1Click:Connect(function()
-        stopWalking()
-        hienThongBao("🛑 Đã dừng ngay lập tức!")
     end)
 end
-
-ganSuKienChoNhom(p1, p2, p3, p4, p5, p6, plbl)
 
 local danhSachTrang = {
     TRANG_CHU = {
@@ -579,7 +559,7 @@ local danhSachTrang = {
     },
     AUTO_BASE = {
         TieuDe = "TỰ ĐỘNG CHẠY VỊ TRÍ",
-        MoTa = "Lưu tọa độ Base 1, Base 2 và tự động di chuyển",
+        MoTa = "Lưu tọa độ vị trí và bật bảng chạy nhanh",
         Muc = {
             {Loai = "autobase"},
         },
@@ -687,12 +667,10 @@ local function hienThiTrang(tenTrang)
                 end)
             end
         elseif item.Loai == "autobase" then
-            local the = tao("Frame", { Size = UDim2.new(1, -4, 0, 250), BackgroundTransparency = 1 }, khungCuon)
+            local the = tao("Frame", { Size = UDim2.new(1, -4, 0, 180), BackgroundTransparency = 1 }, khungCuon)
             local container = tao("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1 }, the)
-            tao("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, container)
-            
-            PopoutBtn, SaveBase1Btn, SaveBase2Btn, SelectBaseBtn, AutoWalkBtn, StopWalkBtn, StatusLabel = taoControlAuto(container)
-            ganSuKienChoNhom(PopoutBtn, SaveBase1Btn, SaveBase2Btn, SelectBaseBtn, AutoWalkBtn, StopWalkBtn, StatusLabel)
+            tao("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, container)
+            xayDungTabAuto(container)
         else
             taoThe(item.TieuDe, item.MoTa, 68)
         end
