@@ -1,6 +1,5 @@
 --[[
-    KIÊN SCRIPT — M1 BLACK NEBULA (FIXED FOR DELTA EXECUTOR)
-    Tương thích 100% trên điện thoại / Delta
+    KIÊN SCRIPT — BẢN GỐC GIAO DIỆN M1 ĐỎ ĐEN (FULL TIẾNG VIỆT)
 ]]
 
 local Players = game:GetService("Players")
@@ -16,14 +15,9 @@ local kienEnabled = true
 local kienIsProcessing = false
 local kienCurrentMultiplier = 4
 
--- Xóa menu cũ nếu có để tránh trùng lặp
-pcall(function()
-    local cu = playerGui:FindFirstChild("KienMenuM1_Pro")
-    if cu then cu:Destroy() end
-    if syn and syn.protect_gui then
-        -- Dành cho executor cao cấp nếu có
-    end
-end)
+-- Xóa menu cũ nếu có
+local cu = playerGui:FindFirstChild("KienMenuM1")
+if cu then cu:Destroy() end
 
 --// BẢNG MÀU GIAO DIỆN M1 ĐỎ ĐEN
 local Mau = {
@@ -71,7 +65,7 @@ local function hieuDung(obj, duration, props)
 end
 
 local screenGui = tao("ScreenGui", {
-    Name = "KienMenuM1_Pro",
+    Name = "KienMenuM1",
     ResetOnSpawn = false,
     IgnoreGuiInset = true,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
@@ -113,51 +107,6 @@ local function hienThongBao(noiDung)
         end
     end)
 end
-
---// BẢNG BÁO LỖI "LOL CRACK" NẾU BỊ SỬA GIAO DIỆN
-local khungCrack = tao("Frame", {
-    Name = "CrackAlertBox",
-    AnchorPoint = Vector2.new(0.5, 0.5),
-    Position = UDim2.new(0.5, 0, 0.5, 0),
-    Size = UDim2.fromOffset(320, 150),
-    BackgroundColor3 = Color3.fromRGB(15, 10, 12),
-    BorderSizePixel = 0,
-    Visible = false,
-    ZIndex = 999,
-}, screenGui)
-boGoc(khungCrack, 14)
-vien(khungCrack, Color3.fromRGB(255, 0, 0), 2)
-
-tao("TextLabel", {
-    Size = UDim2.new(1, 0, 0, 50),
-    Position = UDim2.new(0, 0, 0, 20),
-    BackgroundTransparency = 1,
-    Text = "⚠️ CẢNH BÁO CRACK! ⚠️",
-    TextColor3 = Color3.fromRGB(255, 48, 75),
-    TextSize = 18,
-    Font = Enum.Font.GothamBlack,
-}, khungCrack)
-
-tao("TextLabel", {
-    Size = UDim2.new(1, -40, 0, 40),
-    Position = UDim2.new(0, 20, 0, 70),
-    BackgroundTransparency = 1,
-    Text = "LOL CRACK — Đừng có hòng hack hay sửa tên script của Kiên nhé con trai!",
-    TextColor3 = Color3.fromRGB(245, 245, 250),
-    TextSize = 11,
-    Font = Enum.Font.GothamBold,
-    TextWrapped = true,
-}, khungCrack)
-
---// HỆ THỐNG KIỂM TRA CHỐNG THAY ĐỔI
-task.spawn(function()
-    while task.wait(1) do
-        if not screenGui or screenGui.Parent ~= playerGui or screenGui.Name ~= "KienMenuM1_Pro" then
-            khungCrack.Visible = true
-            break
-        end
-    end
-end)
 
 --// NÚT MỞ MENU NỔI TRÊN MÀN HÌNH (CHỮ K)
 local nutMoMenu = tao("TextButton", {
@@ -235,7 +184,7 @@ tao("TextLabel", {
     Position = UDim2.new(0, 65, 0, 10),
     Size = UDim2.new(0, 280, 0, 25),
     BackgroundTransparency = 1,
-    Text = "KIÊN  |  MENU PRO",
+    Text = "KIÊN  |  MENU M1",
     TextColor3 = Mau.Trang,
     TextXAlignment = Enum.TextXAlignment.Left,
     Font = Enum.Font.GothamBlack,
@@ -331,10 +280,10 @@ tao("UIListLayout", {
 local danhSachTrang = {
     TRANG_CHU = {
         TieuDe = "TRANG CHỦ / TỔNG QUAN",
-        MoTa = "Chào mừng bạn đến với Kiên Script Pro",
+        MoTa = "Chào mừng bạn đến với Kiên Script",
         Muc = {
-            {Loai = "banner", TieuDe = "BLACK NEBULA PRO", MoTa = "Giao diện đỏ đen chống crack — by ? Tiktok"},
-            {Loai = "info", TieuDe = "TRẠNG THÁI", MoTa = "Hệ thống nhân đôi sát thương (Multiplier) hoạt động hoàn hảo."},
+            {Loai = "banner", TieuDe = "BLACK NEBULA M1", MoTa = "Giao diện đỏ đen độc quyền cho Kiên — by ? Tiktok"},
+            {Loai = "info", TieuDe = "TRẠNG THÁI", MoTa = "Hệ thống nhân đôi sát thương (Multiplier) đã sẵn sàng."},
         },
     },
     NHAN_DOI = {
@@ -516,14 +465,14 @@ local function datMoMenu(hienThi)
 end
 
 nutMoMenu.Activated:Connect(function()
-    datMoMenu(not menuChinsVisible and not menuChinsVisible or not menuChinh.Visible)
+    datMoMenu(not menuChinh.Visible)
 end)
 
 nutDong.Activated:Connect(function()
     datMoMenu(false)
 end)
 
---// KÉO THẢ CỬA SỔ (DRAG WINDOW CHO MOBILE / TOUCH)
+--// KÉO THẢ CỬA SỔ (DRAG WINDOW)
 local dangKeo = false
 local viTriBatDau
 local viTriKhung
@@ -560,36 +509,33 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 --// LOGIC NHÂN ĐÔI SÁT THƯƠNG (EGG MULTIPLIER)
-pcall(function()
-    local kienOldNameCall
-    kienOldNameCall = hookmetamethod(game, "__namecall", function(self, ...)
-        local method = getnamecallmethod()
-        local args = {...}
-        
-        if kienEnabled and not kienIsProcessing and kienCurrentMultiplier > 1 and self == EggHitRequest and method == "FireServer" then
-            local eggObject = args[1]
-            local baseHit = args[2] or 1
-            
-            if eggObject then
-                kienIsProcessing = true
-                local extraCount = kienCurrentMultiplier - 1
-                
-                task.spawn(function()
-                    for i = 1, extraCount do
-                        local nextHit = baseHit + i
-                        self:FireServer(eggObject, nextHit)
-                    end
-                    
-                    task.wait(1.0)
-                    kienIsProcessing = false
-                end)
-            end
-        end
-        
-        return kienOldNameCall(self, ...)
-    end)
+local kienOldNameCall
+kienOldNameCall = hookmetamethod(game, "__namecall", function(self, ...)
+	local method = getnamecallmethod()
+	local args = {...}
+	
+	if kienEnabled and not kienIsProcessing and kienCurrentMultiplier > 1 and self == EggHitRequest and method == "FireServer" then
+		local eggObject = args[1]
+		local baseHit = args[2] or 1
+		
+		if eggObject then
+			kienIsProcessing = true
+			local extraCount = kienCurrentMultiplier - 1
+			
+			task.spawn(function()
+				for i = 1, extraCount do
+					local nextHit = baseHit + i
+					self:FireServer(eggObject, nextHit)
+				end
+				
+				task.wait(1.0)
+				kienIsProcessing = false
+			end)
+		end
+	end
+	
+	return kienOldNameCall(self, ...)
 end)
 
 hienThiTrang("TRANG_CHU")
-hienThongBao("Kiên Script — Đã load thành công trên Delta!")
-    
+hienThongBao("Kiên Script M1 — Sẵn sàng hoạt động!")
