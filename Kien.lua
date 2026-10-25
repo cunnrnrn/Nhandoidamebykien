@@ -12,7 +12,6 @@ local kienEnabled = true
 local kienIsProcessing = false
 local kienCurrentMultiplier = 4
 local basePositions = { Base1 = nil, Base2 = nil }
-local selectedBase = "Base1"
 local isAutoWalking = false
 local moveConnection = nil
 local isPoppedOut = false
@@ -92,7 +91,7 @@ local screenGui = tao("ScreenGui", {
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, playerGui)
 
--- THÔNG BÁO NỔI 7 SẮC CẦU VỒNG (RAINBOW TEXT)
+-- THÔNG BÁO NỔI 7 SẮC CẦU VỒNG (RAINBOW TEXT CHUẨN XỊN)
 local thongBaoLabel = tao("TextLabel", {
     Name = "ThongBaoNoi",
     AnchorPoint = Vector2.new(0.5, 0),
@@ -310,10 +309,10 @@ local khungCuon = tao("ScrollingFrame", {
 
 tao("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, khungCuon)
 
--- BẢNG TÁCH RIÊNG (MINI FLOAT PANEL CHUẨN M1 XỊN SÒ)
+-- BẢNG TÁCH RIÊNG (CHỈ GỒM 3 NÚT: CHẠY BASE 1, CHẠY BASE 2, DỪNG NGAY)
 local PopoutFrame = tao("Frame", {
     Name = "PopoutFrameKien",
-    Size = UDim2.fromOffset(200, 160),
+    Size = UDim2.fromOffset(200, 140),
     Position = UDim2.new(0.65, 0, 0.35, 0),
     BackgroundColor3 = Color3.fromRGB(12, 12, 16),
     BorderSizePixel = 0,
@@ -325,7 +324,7 @@ vien(PopoutFrame, Mau.Do, 1.2, 0.2)
 makeDraggable(PopoutFrame)
 
 local PopoutTopBar = tao("Frame", {
-    Size = UDim2.new(1, 0, 0, 30),
+    Size = UDim2.new(1, 0, 0, 28),
     BackgroundColor3 = Mau.Panel,
     BorderSizePixel = 0,
 }, PopoutFrame)
@@ -343,17 +342,15 @@ tao("TextLabel", {
 }, PopoutTopBar)
 
 local PopoutContent = tao("Frame", {
-    Position = UDim2.new(0, 10, 0, 38),
-    Size = UDim2.new(1, -20, 1, -44),
+    Position = UDim2.new(0, 10, 0, 34),
+    Size = UDim2.new(1, -20, 1, -40),
     BackgroundTransparency = 1,
 }, PopoutFrame)
 
 tao("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, PopoutContent)
-local GoTo1Btn, GoTo2Btn, StopBtn
-
 local function taoControlNhanh(parent)
     local btn1 = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 32),
+        Size = UDim2.new(1, 0, 0, 30),
         BackgroundColor3 = Mau.Panel,
         Text = "🚀 Chạy Về Base 1",
         TextColor3 = Mau.Trang,
@@ -365,7 +362,7 @@ local function taoControlNhanh(parent)
     vien(btn1, Mau.Do, 1, 0.4)
 
     local btn2 = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 32),
+        Size = UDim2.new(1, 0, 0, 30),
         BackgroundColor3 = Mau.Panel,
         Text = "🚀 Chạy Về Base 2",
         TextColor3 = Mau.Trang,
@@ -377,7 +374,7 @@ local function taoControlNhanh(parent)
     vien(btn2, Mau.Do, 1, 0.4)
 
     local btn3 = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 34),
+        Size = UDim2.new(1, 0, 0, 32),
         BackgroundColor3 = Color3.fromRGB(180, 40, 40),
         Text = "🛑 Dừng Lại Ngay",
         TextColor3 = Mau.Trang,
@@ -432,32 +429,27 @@ local function startMoveTo(targetPos, tenBase)
     end)
 end
 
-local function ganSuKienNhanh(b1, b2, b3)
-    b1.MouseButton1Click:Connect(function()
-        if not basePositions.Base1 then
-            hienThongBao("Chưa lưu tọa độ Base 1!")
-            return
-        end
-        startMoveTo(basePositions.Base1, "Base 1")
-    end)
+g1.MouseButton1Click:Connect(function()
+    if not basePositions.Base1 then
+        hienThongBao("Chưa lưu tọa độ Base 1!")
+        return
+    end
+    startMoveTo(basePositions.Base1, "Base 1")
+end)
 
-    b2.MouseButton1Click:Connect(function()
-        if not basePositions.Base2 then
-            hienThongBao("Chưa lưu tọa độ Base 2!")
-            return
-        end
-        startMoveTo(basePositions.Base2, "Base 2")
-    end)
+g2.MouseButton1Click:Connect(function()
+    if not basePositions.Base2 then
+        hienThongBao("Chưa lưu tọa độ Base 2!")
+        return
+    end
+    startMoveTo(basePositions.Base2, "Base 2")
+end)
 
-    b3.MouseButton1Click:Connect(function()
-        stopWalking()
-        hienThongBao("🛑 Đã dừng lại ngay lập tức!")
-    end)
-end
+g3.MouseButton1Click:Connect(function()
+    stopWalking()
+    hienThongBao("🛑 Đã dừng lại ngay lập tức!")
+end)
 
-ganSuKienNhanh(g1, g2, g3)
-
--- Giao diện quản lý trong Menu chính (Tab Auto Base)
 local function xayDungTabAuto(parent)
     local save1 = tao("TextButton", {
         Size = UDim2.new(1, 0, 0, 36),
