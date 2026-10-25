@@ -12,7 +12,7 @@ local isProcessing = false
 local currentMultiplier = 4
 local isMenuOpen = true
 
-print("[√12kientomato] Script Pro Max aktif.")
+print("[√12kientomato] Script Fixed Version aktif.")
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "EggMultiplierTopGUI"
@@ -26,13 +26,13 @@ if not ScreenGui.Parent then
 	ScreenGui.Parent = PlayerGui
 end
 
--- ==================== NOTIFIKASI DI LAYAR (BAHASA VIỆT) ====================
+-- ==================== NOTIFIKASI (TIẾNG VIỆT) ====================
 local NotifLabel = Instance.new("TextLabel")
 NotifLabel.Name = "FloatingNotification"
 NotifLabel.Size = UDim2.new(0, 210, 0, 26)
 NotifLabel.AnchorPoint = Vector2.new(1, 0)
 NotifLabel.Position = UDim2.new(1, -50, 0, 10)
-NotifLabel.BackgroundColor3 = Color3.fromRGB(18, 22, 35)
+NotifLabel.BackgroundColor3 = Color3.fromRGB(15, 18, 28)
 NotifLabel.BackgroundTransparency = 0.2
 NotifLabel.TextColor3 = Color3.fromRGB(0, 255, 170)
 NotifLabel.TextSize = 11
@@ -62,21 +62,22 @@ local function showNotification(msg)
 	end)
 end
 
--- ==================== MAIN CONTAINER (KOTAK UTAMA) ====================
+-- ==================== MAIN PANEL (KOTAK UTAMA) ====================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainPanel"
-MainFrame.Size = UDim2.new(0, 235, 0, 95)
+MainFrame.Size = UDim2.new(0, 240, 0, 100)
 MainFrame.AnchorPoint = Vector2.new(1, 0)
 MainFrame.Position = UDim2.new(1, -10, 0, 10)
 MainFrame.BackgroundColor3 = Color3.fromRGB(12, 15, 25)
-MainFrame.BackgroundTransparency = 0.2
+MainFrame.BackgroundTransparency = 0.25
+MainFrame.ClipsDescendants = true
 MainFrame.Parent = ScreenGui
 
 local mainCorner = Instance.new("UICorner")
 mainCorner.CornerRadius = UDim.new(0, 8)
 mainCorner.Parent = MainFrame
 
--- Efek Viền Bảy Sắc Cầu Vòng (Rainbow Border)
+-- Viền bảy sắc cầu vồng (Rainbow Border)
 local rainbowStroke = Instance.new("UIStroke")
 rainbowStroke.Thickness = 2
 rainbowStroke.Parent = MainFrame
@@ -90,33 +91,34 @@ task.spawn(function()
 	end
 end)
 
--- ==================== TOMBOL TOGGLE (MINIMIZE) ====================
+-- ==================== TOMBOL TOGGLE (MINIMIZE) DI KANAN SAT ====================
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "ToggleMenuButton"
-ToggleBtn.Size = UDim2.new(0, 24, 0, 24)
-ToggleBtn.Position = UDim2.new(1, -28, 0, 6)
+ToggleBtn.Size = UDim2.new(0, 26, 0, 26)
+ToggleBtn.Position = UDim2.new(1, -30, 0, 6)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 38, 55)
 ToggleBtn.BackgroundTransparency = 0.3
 ToggleBtn.Text = "-"
 ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleBtn.TextSize = 13
 ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.ZIndex = 5
 ToggleBtn.Parent = MainFrame
 
 local toggleCorner = Instance.new("UICorner")
-toggleCorner.CornerRadius = UDim.new(0, 4)
+toggleCorner.CornerRadius = UDim.new(0, 5)
 toggleCorner.Parent = ToggleBtn
 
--- ==================== NAMA "KIÊN" DENGAN EFEK KETIK ====================
+-- ==================== NAMA "KIÊN" EFEK KETIK ====================
 local NameLabel = Instance.new("TextLabel")
 NameLabel.Name = "NameBanner"
-NameLabel.Size = UDim2.new(0, 0, 0, 24)
+NameLabel.Size = UDim2.new(0, 0, 0, 22)
 NameLabel.Position = UDim2.new(0, 8, 0, 6)
 NameLabel.BackgroundColor3 = Color3.fromRGB(20, 26, 42)
 NameLabel.BackgroundTransparency = 0.4
 NameLabel.Text = ""
 NameLabel.TextColor3 = Color3.fromRGB(0, 220, 255)
-NameLabel.TextSize = 13
+NameLabel.TextSize = 12
 NameLabel.Font = Enum.Font.GothamBlack
 NameLabel.ClipsDescendants = true
 NameLabel.Parent = MainFrame
@@ -127,7 +129,7 @@ nameCorner.Parent = NameLabel
 
 task.spawn(function()
 	task.wait(0.2)
-	local resizeTween = TweenService:Create(NameLabel, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, 160, 0, 24)})
+	local resizeTween = TweenService:Create(NameLabel, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, 160, 0, 22)})
 	resizeTween:Play()
 	resizeTween.Completed:Wait()
 	
@@ -141,7 +143,7 @@ end)
 -- ==================== TOMBOL MULTIPLIER (1x - 5x) ====================
 local ButtonContainer = Instance.new("Frame")
 ButtonContainer.Name = "ButtonContainer"
-ButtonContainer.Size = UDim2.new(0, 219, 0, 34)
+ButtonContainer.Size = UDim2.new(0, 224, 0, 34)
 ButtonContainer.Position = UDim2.new(0, 8, 0, 34)
 ButtonContainer.BackgroundTransparency = 1
 ButtonContainer.Parent = MainFrame
@@ -158,7 +160,7 @@ local multiButtons = {}
 
 for _, val in ipairs(multipliers) do
 	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(0, 39, 0, 34)
+	btn.Size = UDim2.new(0, 40, 0, 34)
 	btn.BackgroundColor3 = (val == 4) and Color3.fromRGB(45, 100, 220) or Color3.fromRGB(20, 26, 42)
 	btn.BackgroundTransparency = 0.3
 	btn.Text = val .. "x"
@@ -188,7 +190,7 @@ for _, val in ipairs(multipliers) do
 		if val == 1 then
 			showNotification("Chế độ 1x: Đã tắt (Bình thường)")
 		else
-			showNotification("Đã đổi sang: " .. val .. "x Đam!")
+			showNotification("Đã chọn: " .. val .. "x Đam!")
 		end
 	end)
 end
@@ -196,8 +198,8 @@ end
 -- ==================== SIGNATURE "by ? Tiktok" ====================
 local SigLabel = Instance.new("TextLabel")
 SigLabel.Name = "SignatureLabel"
-SigLabel.Size = UDim2.new(0, 219, 0, 16)
-SigLabel.Position = UDim2.new(0, 8, 0, 73)
+SigLabel.Size = UDim2.new(0, 224, 0, 18)
+SigLabel.Position = UDim2.new(0, 8, 0, 74)
 SigLabel.BackgroundTransparency = 1
 SigLabel.Text = "by ? Tiktok"
 SigLabel.TextColor3 = Color3.fromRGB(160, 170, 190)
@@ -205,26 +207,29 @@ SigLabel.TextSize = 10
 SigLabel.Font = Enum.Font.GothamItalic
 SigLabel.Parent = MainFrame
 
--- ==================== FUNGSI MINIMIZE (TUTUP/BUKA MENU) ====================
+-- ==================== FUNGSI TOMBOL MINIMIZE (TUTUP/BUKA) ====================
 ToggleBtn.Activated:Connect(function()
 	isMenuOpen = not isMenuOpen
-	NameLabel.Visible = isMenuOpen
-	ButtonContainer.Visible = isMenuOpen
-	SigLabel.Visible = isMenuOpen
 	
 	if isMenuOpen then
-		MainFrame.Size = UDim2.new(0, 235, 0, 95)
+		MainFrame.Size = UDim2.new(0, 240, 0, 100)
 		ToggleBtn.Text = "-"
+		NameLabel.Visible = true
+		ButtonContainer.Visible = true
+		SigLabel.Visible = true
 		showNotification("Đã mở menu")
 	else
-		MainFrame.Size = UDim2.new(0, 60, 0, 36)
-		ToggleBtn.Position = UDim2.new(1, -32, 0, 6)
+		MainFrame.Size = UDim2.new(0, 40, 0, 38)
+		ToggleBtn.Position = UDim2.new(0, 7, 0, 6)
 		ToggleBtn.Text = "+"
+		NameLabel.Visible = false
+		ButtonContainer.Visible = false
+		SigLabel.Visible = false
 		showNotification("Đã ẩn menu")
 	end
 end)
 
--- ==================== LOGIC HOOK FIRESERVER (STABIL & AMAN) ====================
+-- ==================== LOGIC HOOK FIRESERVER (STABIL & CHUẨN GỐC) ====================
 local oldNameCall
 oldNameCall = hookmetamethod(game, "__namecall", function(self, ...)
 	local method = getnamecallmethod()
@@ -253,4 +258,4 @@ oldNameCall = hookmetamethod(game, "__namecall", function(self, ...)
 	return oldNameCall(self, ...)
 end)
 
-print("[√12kientomato] Script berjalan sempurna!")
+print("[√12kientomato] Berhasil dijalankan dengan sempurna!")
