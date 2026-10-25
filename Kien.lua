@@ -3,6 +3,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
+local CoreGui = game:GetService("CoreGui")
 
 local nguoiDung = Players.LocalPlayer
 local playerGui = nguoiDung:WaitForChild("PlayerGui")
@@ -16,6 +20,9 @@ local isAutoWalking = false
 local moveConnection = nil
 local isPoppedOut = false
 local isLocked = false
+local espEnabled = false
+local instantPromptEnabled = false
+local activeEspTags = {}
 
 pcall(function()
     local cu = playerGui:FindFirstChild("KienMenuM1")
@@ -33,6 +40,7 @@ local Mau = {
     Trang = Color3.fromRGB(245, 245, 250),
     Mo = Color3.fromRGB(145, 145, 160),
     XanhNhe = Color3.fromRGB(70, 230, 155),
+    Tim = Color3.fromRGB(180, 80, 255),
 }
 
 local function tao(class, props, parent)
@@ -84,14 +92,26 @@ local function makeDraggable(guiObject)
     end)
 end
 
+-- BỎ VÀO COREGUI HOẶC PROTECT ĐỂ KHÔNG BAO GIỜ BỊ XÓA/ẨN KHI NHẶT ĐỒ
+local parentGui = playerGui
+pcall(function()
+    if gethui then
+        parentGui = gethui()
+    elseif syn and syn.protect_gui then
+        parentGui = Instance.new("Folder")
+        syn.protect_gui(parentGui)
+        parentGui.Parent = CoreGui
+    end
+end)
+
 local screenGui = tao("ScreenGui", {
     Name = "KienMenuM1",
     ResetOnSpawn = false,
     IgnoreGuiInset = true,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-}, playerGui)
+}, parentGui)
 
--- THÔNG BÁO NỔI 7 SẮC CẦU VỒNG (RAINBOW TEXT CHUẨN XỊN)
+-- THÔNG BÁO NỔI 7 SẮC CẦU VỒNG
 local thongBaoLabel = tao("TextLabel", {
     Name = "ThongBaoNoi",
     AnchorPoint = Vector2.new(0.5, 0),
@@ -224,9 +244,33 @@ tao("TextLabel", {
     TextSize = 10,
 }, thanhTieuDe)
 
+-- HIỂN THỊ FPS TRỰC TIẾP TRÊN THANH TIÊU ĐỀ
+local fpsLabel = tao("TextLabel", {
+    Position = UDim2.new(1, -160, 0, 20),
+    Size = UDim2.fromOffset(70, 24),
+    BackgroundColor3 = Mau.The,
+    TextColor3 = Mau.XanhNhe,
+    Text = "FPS: 60",
+    TextSize = 11,
+    Font = Enum.Font.GothamBold,
+}, thanhTieuDe)
+boGoc(fpsLabel, 6)
+
+local lastTick = tick()
+local frameCount = 0
+RunService.RenderStepped:Connect(function()
+    frameCount += 1
+    local currentTick = tick()
+    if currentTick - lastTick >= 1 then
+        fpsLabel.Text = "FPS: " .. math.floor(frameCount / (currentTick - lastTick))
+        frameCount = 0
+        lastTick = currentTick
+    end
+end)
+
 local nutKhoa = tao("TextButton", {
     Size = UDim2.fromOffset(30, 30),
-    Position = UDim2.new(1, -80, 0, 15),
+    Position = UDim2.new(1, -115, 0, 15),
     BackgroundColor3 = Mau.The,
     Text = "🔓",
     TextSize = 14,
@@ -309,7 +353,7 @@ local khungCuon = tao("ScrollingFrame", {
 
 tao("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, khungCuon)
 
--- BẢNG TÁCH RIÊNG (CHỈ GỒM 3 NÚT: CHẠY BASE 1, CHẠY BASE 2, DỪNG NGAY)
+-- BẢNG TÁCH RIÊNG (3 NÚT ĐIỀU KHIỂN NHANH)
 local PopoutFrame = tao("Frame", {
     Name = "PopoutFrameKien",
     Size = UDim2.fromOffset(200, 140),
@@ -450,6 +494,168 @@ g3.MouseButton1Click:Connect(function()
     hienThongBao("🛑 Đã dừng lại ngay lập tức!")
 end)
 
+-- TÍNH NĂNG NHẬT VẬT PHẨM NHANH (INSTANT PROXIMITY PROMPT)
+local function batNhatVatPhamNhanh()
+    instantPromptEnabled = true
+    game.DescendantAdded:Connect(function(obj)
+        if instantPromptEnabled and obj:IsA("ProximityPrompt") then
+            obj.HoldDuration = 0
+        end
+    end)
+    for _, obj in ipairs(game:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") then
+            obj.HoldDuration = 0
+        end
+    end
+end
+batNhatVatPhamNhanh()
+
+-- TÍNH NĂNG ĐỊNH VỊ TÊN NGƯỜI CHƠI MÀU TÍM (ESP PLAYER)
+local function taoEspChoPlayer(player)
+    if player == nguoiDung then return end
+    local function onCharacterAdded(char)
+        local head = char:WaitForChild("Head", 5)
+        if head and not head:FindFirstChild("KienEspTag") then
+            local billboard = tao("BillboardGui", {
+                Name = "KienEspTag",
+                Size = UDim2.fromOffset(150, 40),
+                StudsOffset = Vector3.new(0, 2.5, 0),
+                AlwaysOnTop = true,
+            }, head)
+
+            local txt = tao("TextLabel", {
+                Size = UDim2.fromScale(1, 1),
+                BackgroundTransparency = 1,
+                Text = player.Name,
+                TextColor3 = Mau.Tim,
+                TextSize = 13,
+                Font = Enum.Font.GothamBold,
+            }, billboard)
+            table.insert(activeEspTags, billboard)
+        end
+    end
+    if player.Character then onCharacterAdded(player.Character) end
+    player.CharacterAdded:Connect(onCharacterAdded)
+end
+
+local function toggleEsp(state)
+    espEnabled = state
+    if espEnabled then
+        for _, p in ipairs(Players:GetPlayers()) do taoEspChoPlayer(p) end
+        Players.PlayerAdded:Connect(taoEspChoPlayer)
+        hienThongBao("Đã bật định vị tên người chơi màu tím!")
+    else
+        for _, tag in ipairs(activeEspTags) do tag:Destroy() end
+        activeEspTags = {}
+        hienThongBao("Đã tắt định vị người chơi!")
+    end
+end
+
+-- TÍNH NĂNG HOP SERVER, REJOIN & SUPER FIX LAG
+local function hopServer()
+    hienThongBao("Đang tìm server ít người...")
+    local placeId = game.PlaceId
+    local success, result = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"))
+    end)
+    if success and result and result.data then
+        for _, s in ipairs(result.data) do
+            if s.playing < s.maxPlayers and s.id ~= game.JobId then
+                TeleportService:TeleportToPlaceInstance(placeId, s.id, nguoiDung)
+                return
+            end
+        end
+    end
+    hienThongBao("Không tìm thấy server phù hợp, thử lại sau!")
+end
+
+local function rejoinGame()
+    hienThongBao("Đang kết nối lại server...")
+    TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, nguoiDung)
+end
+
+local function superFixLag()
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9e9
+    settings().Rendering.QualityLevel = 1
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.Material = Enum.Material.SmoothPlastic
+            obj.Reflectance = 0
+        elseif obj:IsA("Decal") or obj:IsA("Texture") then
+            obj:Destroy()
+        end
+    end
+    hienThongBao("⚡ Đã bật Super Fix Lag mượt mà!")
+end
+
+-- GIAO DIỆN QUẢN LÝ TRONG MENU CHÍNH
+local function xayDungTabTools(parent)
+    local espBtn = tao("TextButton", {
+        Size = UDim2.new(1, 0, 0, 36),
+        BackgroundColor3 = Mau.Panel,
+        Text = "👁️ Định Vị Người Chơi (Tên Tím): OFF",
+        TextColor3 = Mau.Trang,
+        Font = Enum.Font.GothamBold,
+        TextSize = 11,
+        AutoButtonColor = false,
+    }, parent)
+    boGoc(espBtn, 8)
+    vien(espBtn, Mau.Do, 1, 0.4)
+
+    local fixLagBtn = tao("TextButton", {
+        Size = UDim2.new(1, 0, 0, 36),
+        BackgroundColor3 = Color3.fromRGB(200, 100, 0),
+        Text = "⚡ Bật Super Fix Lag / Anti Lag",
+        TextColor3 = Mau.Trang,
+        Font = Enum.Font.GothamBold,
+        TextSize = 11,
+        AutoButtonColor = false,
+    }, parent)
+    boGoc(fixLagBtn, 8)
+    vien(fixLagBtn, Mau.Trang, 1, 0.3)
+
+    local hopBtn = tao("TextButton", {
+        Size = UDim2.new(1, 0, 0, 36),
+        BackgroundColor3 = Color3.fromRGB(100, 50, 180),
+        Text = "🌐 Hop Server Ít Người",
+        TextColor3 = Mau.Trang,
+        Font = Enum.Font.GothamBold,
+        TextSize = 11,
+        AutoButtonColor = false,
+    }, parent)
+    boGoc(hopBtn, 8)
+    vien(hopBtn, Mau.Do, 1, 0.4)
+
+    local rejoinBtn = tao("TextButton", {
+        Size = UDim2.new(1, 0, 0, 36),
+        BackgroundColor3 = Color3.fromRGB(40, 140, 80),
+        Text = "🔄 Vào Lại Server (Rejoin)",
+        TextColor3 = Mau.Trang,
+        Font = Enum.Font.GothamBold,
+        TextSize = 11,
+        AutoButtonColor = false,
+    }, parent)
+    boGoc(rejoinBtn, 8)
+    vien(rejoinBtn, Mau.Trang, 1, 0.3)
+
+    espBtn.MouseButton1Click:Connect(function()
+        espEnabled = not espEnabled
+        if espEnabled then
+            espBtn.Text = "👁️ Định Vị Người Chơi (Tên Tím): ON"
+            espBtn.BackgroundColor3 = Mau.DoDam
+        else
+            espBtn.Text = "👁️ Định Vị Người Chơi (Tên Tím): OFF"
+            espBtn.BackgroundColor3 = Mau.Panel
+        end
+        toggleEsp(espEnabled)
+    end)
+
+    fixLagBtn.MouseButton1Click:Connect(superFixLag)
+    hopBtn.MouseButton1Click:Connect(hopServer)
+    rejoinBtn.MouseButton1Click:Connect(rejoinGame)
+end
+
 local function xayDungTabAuto(parent)
     local save1 = tao("TextButton", {
         Size = UDim2.new(1, 0, 0, 36),
@@ -539,7 +745,7 @@ local danhSachTrang = {
         MoTa = "Chào mừng bạn đến với Kiên Script",
         Muc = {
             {Loai = "banner", TieuDe = "BLACK NEBULA M1", MoTa = "Giao diện đỏ đen độc quyền — by ? Tiktok"},
-            {Loai = "info", TieuDe = "TRẠNG THÁI", MoTa = "Hệ thống nhân đôi sát thương & Auto Base sẵn sàng."},
+            {Loai = "info", TieuDe = "TRẠNG THÁI", MoTa = "Nhặt đồ nhanh, Định vị, Fix lag & Auto Base sẵn sàng."},
         },
     },
     NHAN_DOI = {
@@ -554,6 +760,13 @@ local danhSachTrang = {
         MoTa = "Lưu tọa độ vị trí và bật bảng chạy nhanh",
         Muc = {
             {Loai = "autobase"},
+        },
+    },
+    TOOLS = {
+        TieuDe = "TIỆN ÍCH & FIX LAG",
+        MoTa = "Định vị người chơi, Hop server và chống lag",
+        Muc = {
+            {Loai = "tools"},
         },
     },
     THONG_TIN = {
@@ -663,14 +876,19 @@ local function hienThiTrang(tenTrang)
             local container = tao("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1 }, the)
             tao("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, container)
             xayDungTabAuto(container)
+        elseif item.Loai == "tools" then
+            local the = tao("Frame", { Size = UDim2.new(1, -4, 0, 180), BackgroundTransparency = 1 }, khungCuon)
+            local container = tao("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1 }, the)
+            tao("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, container)
+            xayDungTabTools(container)
         else
             taoThe(item.TieuDe, item.MoTa, 68)
         end
     end
 end
 
-local tenNut = {"TRANG_CHU", "NHAN_DOI", "AUTO_BASE", "THONG_TIN"}
-local tenHienThi = {"TRANG CHỦ", "NHÂN ĐÔI", "AUTO BASE", "THÔNG TIN"}
+local tenNut = {"TRANG_CHU", "NHAN_DOI", "AUTO_BASE", "TOOLS", "THONG_TIN"}
+local tenHienThi = {"TRANG CHỦ", "NHÂN ĐÔI", "AUTO BASE", "TIỆN ÍCH", "THÔNG TIN"}
 local cacNutBen = {}
 
 for index, name in ipairs(tenNut) do
@@ -732,4 +950,3 @@ end)
 
 hienThiTrang("TRANG_CHU")
 hienThongBao("√12kientomato M1 — Sẵn sàng hoạt động!")
-	
