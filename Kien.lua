@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
@@ -11,7 +12,7 @@ local isProcessing = false
 local currentMultiplier = 4
 local isMenuOpen = true
 
-print("[√12kientomato] Script aktif.")
+print("[√12kientomato] Script UI Premium aktif.")
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "EggMultiplierTopGUI"
@@ -25,55 +26,53 @@ if not ScreenGui.Parent then
 	ScreenGui.Parent = PlayerGui
 end
 
--- A. BANNER NAMA (Huruf "KIÊN" tung yang melar & ngầu)
-local NameLabel = Instance.new("TextLabel")
-NameLabel.Name = "NameBanner"
-NameLabel.Size = UDim2.new(0, 0, 0, 22)
-NameLabel.AnchorPoint = Vector2.new(1, 1)
-NameLabel.Position = UDim2.new(1, -10, 0, 6)
-NameLabel.BackgroundColor3 = Color3.fromRGB(15, 20, 35)
-NameLabel.BackgroundTransparency = 0.3
-NameLabel.Text = ""
-NameLabel.TextColor3 = Color3.fromRGB(0, 220, 255)
-NameLabel.TextSize = 13
-NameLabel.Font = Enum.Font.GothamBlack
-NameLabel.ClipsDescendants = true
-NameLabel.Parent = ScreenGui
+-- ==================== NOTIFIKASI DI LAYAR ====================
+local NotifLabel = Instance.new("TextLabel")
+NotifLabel.Name = "FloatingNotification"
+NotifLabel.Size = UDim2.new(0, 220, 0, 28)
+NotifLabel.AnchorPoint = Vector2.new(1, 0)
+NotifLabel.Position = UDim2.new(1, -10, 0, 135)
+NotifLabel.BackgroundColor3 = Color3.fromRGB(15, 20, 30)
+NotifLabel.BackgroundTransparency = 0.3
+NotifLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
+NotifLabel.TextSize = 12
+NotifLabel.Font = Enum.Font.GothamBold
+NotifLabel.Text = ""
+NotifLabel.Visible = false
+NotifLabel.Parent = ScreenGui
 
-local nameCorner = Instance.new("UICorner")
-nameCorner.CornerRadius = UDim.new(0, 5)
-nameCorner.Parent = NameLabel
+local notifCorner = Instance.new("UICorner")
+notifCorner.CornerRadius = UDim.new(0, 6)
+notifCorner.Parent = NotifLabel
 
-local nameStroke = Instance.new("UIStroke")
-nameStroke.Color = Color3.fromRGB(0, 150, 255)
-nameStroke.Thickness = 1.5
-nameStroke.Parent = NameLabel
-
--- Animasi melar lalu ketik "KIÊN"
-task.spawn(function()
-	task.wait(0.4)
-	local resizeTween = TweenService:Create(NameLabel, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, 235, 0, 22)})
-	resizeTween:Play()
-	resizeTween.Completed:Wait()
+local function showNotification(msg)
+	NotifLabel.Text = "  " .. msg
+	NotifLabel.Visible = true
+	NotifLabel.TextTransparency = 0
+	NotifLabel.BackgroundTransparency = 0.3
 	
-	local targetText = "KIÊN"
-	for i = 1, #targetText do
-		NameLabel.Text = string.sub(targetText, 1, i)
-		task.wait(0.06)
-	end
-end)
+	task.spawn(function()
+		task.wait(1.2)
+		for i = 0, 1, 0.1 do
+			NotifLabel.TextTransparency = i
+			NotifLabel.BackgroundTransparency = 0.3 + (i * 0.7)
+			task.wait(0.03)
+		end
+		NotifLabel.Visible = false
+	end)
+end
 
--- B. Tombol Toggle/Minimize
+-- ==================== TOMBOL TOGGLE (MINIMIZE) DI POJOK KANAN SAT ====================
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "ToggleMenuButton"
 ToggleBtn.Size = UDim2.new(0, 32, 0, 32)
 ToggleBtn.AnchorPoint = Vector2.new(1, 0)
-ToggleBtn.Position = UDim2.new(1, -10, 0, 34)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
-ToggleBtn.BackgroundTransparency = 0.35
+ToggleBtn.Position = UDim2.new(1, -10, 0, 10)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
+ToggleBtn.BackgroundTransparency = 0.2
 ToggleBtn.Text = "-"
-ToggleBtn.TextColor3 = Color3.new(1, 1, 1)
-ToggleBtn.TextSize = 14
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.TextSize = 15
 ToggleBtn.Font = Enum.Font.GothamBold
 ToggleBtn.Parent = ScreenGui
 
@@ -82,25 +81,84 @@ toggleCorner.CornerRadius = UDim.new(0, 6)
 toggleCorner.Parent = ToggleBtn
 
 local toggleStroke = Instance.new("UIStroke")
-toggleStroke.Color = Color3.fromRGB(0, 0, 0)
+toggleStroke.Color = Color3.fromRGB(0, 180, 255)
 toggleStroke.Thickness = 1.5
 toggleStroke.Parent = ToggleBtn
 
--- C. Container Utama untuk Tombol Multiplier (1x sampai 5x)
-local Container = Instance.new("Frame")
-Container.Name = "MultiplierContainer"
-Container.Size = UDim2.new(0, 235, 0, 36)
-Container.AnchorPoint = Vector2.new(1, 0)
-Container.Position = UDim2.new(1, -48, 0, 34) 
-Container.BackgroundTransparency = 1
-Container.Parent = ScreenGui
+-- ==================== MAIN CONTAINER (KOTAK UTAMA) ====================
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainPanel"
+MainFrame.Size = UDim2.new(0, 240, 0, 92) -- Diperpanjang sedikit ke bawah untuk teks signature
+MainFrame.AnchorPoint = Vector2.new(1, 0)
+MainFrame.Position = UDim2.new(1, -48, 0, 10)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 18, 28)
+MainFrame.BackgroundTransparency = 0.25
+MainFrame.Parent = ScreenGui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 8)
+mainCorner.Parent = MainFrame
+
+-- Efek Viền Bảy Sắc Cầu Vòng (Rainbow Border)
+local rainbowStroke = Instance.new("UIStroke")
+rainbowStroke.Thickness = 2
+rainbowStroke.Parent = MainFrame
+
+task.spawn(function()
+	local hue = 0
+	while true do
+		hue = (tick() % 5) / 5
+		rainbowStroke.Color = Color3.fromHSV(hue, 1, 1)
+		RunService.RenderStepped:Wait()
+	end
+end)
+
+-- ==================== NAMA "KIÊN" DI DALAM PANEL ====================
+local NameLabel = Instance.new("TextLabel")
+NameLabel.Name = "NameBanner"
+NameLabel.Size = UDim2.new(0, 0, 0, 20)
+NameLabel.Position = UDim2.new(0, 6, 0, 6)
+NameLabel.BackgroundColor3 = Color3.fromRGB(25, 30, 45)
+NameLabel.BackgroundTransparency = 0.4
+NameLabel.Text = ""
+NameLabel.TextColor3 = Color3.fromRGB(0, 220, 255)
+NameLabel.TextSize = 12
+NameLabel.Font = Enum.Font.GothamBlack
+NameLabel.ClipsDescendants = true
+NameLabel.Parent = MainFrame
+
+local nameCorner = Instance.new("UICorner")
+nameCorner.CornerRadius = UDim.new(0, 4)
+nameCorner.Parent = NameLabel
+
+-- Animasi ketik nama KIÊN
+task.spawn(function()
+	task.wait(0.3)
+	local resizeTween = TweenService:Create(NameLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, 228, 0, 20)})
+	resizeTween:Play()
+	resizeTween.Completed:Wait()
+	
+	local targetText = "KIÊN"
+	for i = 1, #targetText do
+		NameLabel.Text = string.sub(targetText, 1, i)
+		task.wait(0.05)
+	end
+end)
+
+-- ==================== TOMBOL-TOMBOL MULTIPLIER (1x - 5x) ====================
+local ButtonContainer = Instance.new("Frame")
+ButtonContainer.Name = "ButtonContainer"
+ButtonContainer.Size = UDim2.new(0, 228, 0, 36)
+ButtonContainer.Position = UDim2.new(0, 6, 0, 30)
+ButtonContainer.BackgroundTransparency = 1
+ButtonContainer.Parent = MainFrame
 
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.FillDirection = Enum.FillDirection.Horizontal
-UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 5)
-UIListLayout.Parent = Container
+UIListLayout.Padding = UDim.new(0, 6)
+UIListLayout.Parent = ButtonContainer
 
 local multipliers = {1, 2, 3, 4, 5}
 local multiButtons = {}
@@ -108,13 +166,13 @@ local multiButtons = {}
 for _, val in ipairs(multipliers) do
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(0, 40, 0, 32)
-	btn.BackgroundColor3 = (val == 4) and Color3.fromRGB(45, 100, 220) or Color3.fromRGB(30, 35, 50)
-	btn.BackgroundTransparency = 0.35 
+	btn.BackgroundColor3 = (val == 4) and Color3.fromRGB(45, 100, 220) or Color3.fromRGB(25, 30, 45)
+	btn.BackgroundTransparency = 0.3
 	btn.Text = val .. "x"
 	btn.TextColor3 = Color3.new(1, 1, 1)
-	btn.TextSize = 13
+	btn.TextSize = 12
 	btn.Font = Enum.Font.GothamBold
-	btn.Parent = Container
+	btn.Parent = ButtonContainer
 	
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 6)
@@ -122,7 +180,7 @@ for _, val in ipairs(multipliers) do
 	
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Color3.fromRGB(0, 0, 0)
-	stroke.Thickness = 1.5
+	stroke.Thickness = 1
 	stroke.Parent = btn
 	
 	multiButtons[val] = btn
@@ -132,28 +190,47 @@ for _, val in ipairs(multipliers) do
 		for mVal, button in pairs(multiButtons) do
 			if mVal == val then
 				button.BackgroundColor3 = Color3.fromRGB(45, 100, 220)
-				button.BackgroundTransparency = 0.2
+				button.BackgroundTransparency = 0.1
 			else
-				button.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
-				button.BackgroundTransparency = 0.45
+				button.BackgroundColor3 = Color3.fromRGB(25, 30, 45)
+				button.BackgroundTransparency = 0.4
 			end
+		end
+		
+		if val == 1 then
+			showNotification("Mode 1x: Normal (Nonaktif)")
+		else
+			showNotification("Berhasil ubah ke: " .. val .. "x Hit!")
 		end
 	end)
 end
 
--- Fungsi Buka/Tutup Menu
+-- ==================== SIGNATURE "by ? Tiktok" ====================
+local SigLabel = Instance.new("TextLabel")
+SigLabel.Name = "SignatureLabel"
+SigLabel.Size = UDim2.new(0, 228, 0, 18)
+SigLabel.Position = UDim2.new(0, 6, 0, 70)
+SigLabel.BackgroundTransparency = 1
+SigLabel.Text = "by ? Tiktok"
+SigLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+SigLabel.TextSize = 10
+SigLabel.Font = Enum.Font.GothamItalic
+SigLabel.Parent = MainFrame
+
+-- ==================== FUNGSI MINIMIZE / BUKA-TUTUP MENU ====================
 ToggleBtn.Activated:Connect(function()
 	isMenuOpen = not isMenuOpen
-	Container.Visible = isMenuOpen
-	NameLabel.Visible = isMenuOpen
+	MainFrame.Visible = isMenuOpen
 	if isMenuOpen then
 		ToggleBtn.Text = "-"
+		showNotification("Menu Dibuka")
 	else
 		ToggleBtn.Text = "+"
+		showNotification("Menu Disembunyikan")
 	end
 end)
 
--- 2. HOOK / INTERCEPT FIRESERVER
+-- ==================== LOGIC HOOK FIRESERVER (AMAN & STABIL) ====================
 local oldNameCall
 oldNameCall = hookmetamethod(game, "__namecall", function(self, ...)
 	local method = getnamecallmethod()
@@ -182,4 +259,4 @@ oldNameCall = hookmetamethod(game, "__namecall", function(self, ...)
 	return oldNameCall(self, ...)
 end)
 
-print("[√12kientomato] Siap!")
+print("[√12kientomato] Siap dijalankan di game!")
