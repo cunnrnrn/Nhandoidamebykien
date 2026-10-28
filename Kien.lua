@@ -19,6 +19,9 @@ local kienEnabled = true
 local kienIsProcessing = false
 local kienCurrentMultiplier = 4
 local basePositions = { Base1 = nil, Base2 = nil }
+local baseModes = { Base1 = "Tele", Base2 = "Tele" } -- Mặc định: "Run", "Fly", "Tele"
+local baseFlySpeeds = { Base1 = 100, Base2 = 100 }
+
 local isAutoWalking = false
 local moveConnection = nil
 local isPoppedOut = false
@@ -85,28 +88,25 @@ local function hieuDung(obj, duration, props)
     return t
 end
 
--- Hiệu ứng ánh sáng lấp lánh (Shimmer Animation) cho Menu chính
-local function taoHieuUngLapLanh(parent)
-    local spark = tao("Frame", {
-        Size = UDim2.new(0, 40, 2, 0),
-        Position = UDim2.new(-0.5, 0, -0.5, 0),
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-        BackgroundTransparency = 0.85,
-        Rotation = 30,
-        BorderSizePixel = 0,
-    }, parent)
-    boGoc(spark, 20)
-    
-    task.spawn(function()
-        while spark and spark.Parent do
-            spark.Position = UDim2.new(-0.5, 0, -0.5, 0)
-            TweenService:Create(spark, TweenInfo.new(2.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-                Position = UDim2.new(1.5, 0, 1.5, 0)
-            }):Play()
-            task.wait(5)
+-- Anti-Lag Super Optimization
+local function superAntiLag()
+    pcall(function()
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 9e9
+        Lighting.Brightness = 1
+        settings().Rendering.QualityLevel = 1
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                obj.Material = Enum.Material.SmoothPlastic
+                obj.Reflectance = 0
+                obj.CastShadow = false
+            elseif obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+                obj:Destroy()
+            end
         end
     end)
 end
+superAntiLag()
 
 local function makeDraggable(guiObject)
     local dragging, dragInput, dragStart, startPos
@@ -153,23 +153,6 @@ local screenGui = tao("ScreenGui", {
     IgnoreGuiInset = true,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, parentGui)
-
-local function autoBoostFPS()
-    pcall(function()
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd = 9e9
-        settings().Rendering.QualityLevel = 1
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") then
-                obj.Material = Enum.Material.SmoothPlastic
-                obj.Reflectance = 0
-            elseif obj:IsA("Decal") or obj:IsA("Texture") then
-                obj:Destroy()
-            end
-        end
-    end)
-end
-autoBoostFPS()
 
 local thongBaoLabel = tao("TextLabel", {
     Name = "ThongBaoNoi",
@@ -219,7 +202,6 @@ boGoc(nutMoMenu, 18)
 vien(nutMoMenu, Mau.Do, 2.5, 0.2)
 makeDraggable(nutMoMenu)
 
--- Menu chính làm trong suốt siêu cao, nhìn thấu ra ngoài rõ nét
 local menuChinh = tao("Frame", {
     Name = "MenuChinh",
     AnchorPoint = Vector2.new(0.5, 0.5),
@@ -234,7 +216,6 @@ local menuChinh = tao("Frame", {
 boGoc(menuChinh, 18)
 vien(menuChinh, Mau.Do, 1.8, 0.3)
 makeDraggable(menuChinh)
-taoHieuUngLapLanh(menuChinh)
 
 local tyLeGiaoDien = tao("UIScale", { Scale = 1 }, menuChinh)
 local function capNhatTyLe()
@@ -342,13 +323,8 @@ vien(nutKhoa, Mau.Mo, 1, 0.5)
 
 nutKhoa.MouseButton1Click:Connect(function()
     isLocked = not isLocked
-    if isLocked then
-        nutKhoa.Text = "🔒"
-        hienThongBao("Đã khóa vị trí Menu!")
-    else
-        nutKhoa.Text = "🔓"
-        hienThongBao("Đã mở khóa Menu!")
-    end
+    nutKhoa.Text = isLocked and "🔒" or "🔓"
+    hienThongBao(isLocked and "Đã khóa vị trí Menu!" or "Đã mở khóa Menu!")
 end)
 
 local nutDong = tao("TextButton", {
@@ -445,7 +421,7 @@ tao("TextLabel", {
     Position = UDim2.new(0, 12, 0, 0),
     Size = UDim2.new(1, -50, 1, 0),
     BackgroundTransparency = 1,
-    Text = "⚡ ĐIỀU KHIỂN NHANH & BASE",
+    Text = "⚡ ĐIỀU KHIỂN NHANH BASE",
     TextColor3 = Mau.Den,
     TextXAlignment = Enum.TextXAlignment.Left,
     Font = Enum.Font.GothamBold,
@@ -476,17 +452,9 @@ vien(nutThuGonPopout, Mau.Mo, 1, 0.5)
 
 nutThuGonPopout.MouseButton1Click:Connect(function()
     isPopoutMinimized = not isPopoutMinimized
-    if isPopoutMinimized then
-        PopoutContent.Visible = false
-        PopoutFrame.Size = UDim2.fromOffset(230, 35)
-        nutThuGonPopout.Text = "+"
-        hienThongBao("Đã thu gọn bảng điều khiển nhanh!")
-    else
-        PopoutContent.Visible = true
-        PopoutFrame.Size = UDim2.fromOffset(230, 200)
-        nutThuGonPopout.Text = "-"
-        hienThongBao("Đã phóng to bảng điều khiển nhanh!")
-    end
+    PopoutContent.Visible = not isPopoutMinimized
+    PopoutFrame.Size = isPopoutMinimized and UDim2.fromOffset(230, 35) or UDim2.fromOffset(230, 200)
+    nutThuGonPopout.Text = isPopoutMinimized and "+" or "-"
 end)
 
 local function stopWalking()
@@ -499,7 +467,6 @@ local function stopWalking()
     if humanoid then humanoid:Move(Vector3.new(0, 0, 0), false) end
 end
 
--- Hàm giả lập chạy về vị trí đích
 local function startMoveTo(targetPos, tenBase)
     if moveConnection then moveConnection:Disconnect() end
     isAutoWalking = true
@@ -528,7 +495,6 @@ local function startMoveTo(targetPos, tenBase)
     end)
 end
 
--- Hàm bay về vị trí đích với tốc độ tùy chỉnh (1 - 500)
 local function flyHomeTo(targetPos, tenBase, speed)
     if moveConnection then moveConnection:Disconnect() end
     isAutoWalking = true
@@ -562,7 +528,6 @@ local function flyHomeTo(targetPos, tenBase, speed)
     end)
 end
 
--- Hàm Teleport tức thời về nhà
 local function teleportHome(targetPos, tenBase)
     stopWalking()
     local char = nguoiDung.Character
@@ -575,31 +540,64 @@ local function teleportHome(targetPos, tenBase)
     end
 end
 
-local function taoControlNhanh(parent)
-    local btn1 = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 30),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.25,
-        Text = "🚀 Dừng Lại / Hủy Tác Vụ",
-        TextColor3 = Mau.Do,
-        Font = Enum.Font.GothamBold,
-        TextSize = 11,
-        AutoButtonColor = false,
-    }, parent)
-    boGoc(btn1, 8)
-    vien(btn1, Mau.Do, 1, 0.4)
-
-    btn1.MouseButton1Click:Connect(function()
-        hieuDung(btn1, 0.1, {BackgroundColor3 = Mau.DoDam})
-        task.delay(0.1, function() hieuDung(btn1, 0.1, {BackgroundColor3 = Mau.NutBam}) end)
-        stopWalking()
-        hienThongBao("🛑 Đã dừng mọi tác vụ di chuyển!")
-    end)
-
-    return btn1
+-- Hàm kích hoạt về Base theo đúng lựa chọn cấu hình trong Menu
+local function veBaseTheoCauHinh(baseKey, tenBase)
+    local pos = basePositions[baseKey]
+    if not pos then hienThongBao("Chưa lưu tọa độ " .. tenBase .. "!"); return end
+    
+    local mode = baseModes[baseKey] or "Tele"
+    if mode == "Run" then
+        startMoveTo(pos, tenBase)
+    elseif mode == "Fly" then
+        local spd = baseFlySpeeds[baseKey] or 100
+        flyHomeTo(pos, tenBase, spd)
+    elseif mode == "Tele" then
+        teleportHome(pos, tenBase)
+    end
 end
 
-taoControlNhanh(PopoutContent)
+local btnPopBase1 = tao("TextButton", {
+    Size = UDim2.new(1, 0, 0, 32),
+    BackgroundColor3 = Mau.NutBam,
+    BackgroundTransparency = 0.25,
+    Text = "🚀 Về Base 1 (Theo Lựa Chọn)",
+    TextColor3 = Mau.Den,
+    Font = Enum.Font.GothamBold,
+    TextSize = 11,
+    AutoButtonColor = false,
+}, PopoutContent)
+boGoc(btnPopBase1, 8)
+vien(btnPopBase1, Mau.Do, 1, 0.4)
+
+local btnPopBase2 = tao("TextButton", {
+    Size = UDim2.new(1, 0, 0, 32),
+    BackgroundColor3 = Mau.NutBam,
+    BackgroundTransparency = 0.25,
+    Text = "🚀 Về Base 2 (Theo Lựa Chọn)",
+    TextColor3 = Mau.Den,
+    Font = Enum.Font.GothamBold,
+    TextSize = 11,
+    AutoButtonColor = false,
+}, PopoutContent)
+boGoc(btnPopBase2, 8)
+vien(btnPopBase2, Mau.Do, 1, 0.4)
+
+local btnDungAll = tao("TextButton", {
+    Size = UDim2.new(1, 0, 0, 32),
+    BackgroundColor3 = Mau.DoDam,
+    BackgroundTransparency = 0.15,
+    Text = "🛑 Dừng Lại Ngay",
+    TextColor3 = Mau.Trang,
+    Font = Enum.Font.GothamBold,
+    TextSize = 11,
+    AutoButtonColor = false,
+}, PopoutContent)
+boGoc(btnDungAll, 8)
+vien(btnDungAll, Mau.Trang, 1, 0.3)
+
+btnPopBase1.MouseButton1Click:Connect(function() veBaseTheoCauHinh("Base1", "Base 1") end)
+btnPopBase2.MouseButton1Click:Connect(function() veBaseTheoCauHinh("Base2", "Base 2") end)
+btnDungAll.MouseButton1Click:Connect(function() stopWalking(); hienThongBao("🛑 Đã dừng lại!") end)
 -- ==========================================
 -- SCRIPT: √12kientomato MENU M1 PRO (PHẦN 3/5)
 -- ==========================================
@@ -723,7 +721,7 @@ local function toggleSpeed(state, val)
     end
 end
 
--- FLY V3 CHUẨN XNEO (CÓ NÚT UP / DOWN, GÓC NHÌN CAMERA CHUẨN XÁC, MƯỢT MÀ)
+-- FLY V3 CHUẨN XNEO
 local function taoGiaoDienFly()
     local flyGui = tao("Frame", {
         Name = "FlyGuiKien",
@@ -781,24 +779,12 @@ local function taoGiaoDienFly()
 
     btnMiniFly.MouseButton1Click:Connect(function()
         isFlyMinimized = not isFlyMinimized
-        if isFlyMinimized then
-            flyBody.Visible = false
-            flyGui.Size = UDim2.fromOffset(210, 34)
-            btnMiniFly.Text = "+"
-            hienThongBao("Đã thu gọn bảng Fly V3!")
-        else
-            flyBody.Visible = true
-            flyGui.Size = UDim2.fromOffset(210, 150)
-            btnMiniFly.Text = "-"
-            hienThongBao("Đã mở rộng bảng Fly V3!")
-        end
+        flyBody.Visible = not isFlyMinimized
+        flyGui.Size = isFlyMinimized and UDim2.fromOffset(210, 34) or UDim2.fromOffset(210, 150)
+        btnMiniFly.Text = isFlyMinimized and "+" or "-"
     end)
 
-    -- Thanh UP và DOWN điều chỉnh độ cao như bản Fly V3 gốc
-    local upDownRow = tao("Frame", {
-        Size = UDim2.new(1, 0, 0, 30),
-        BackgroundTransparency = 1,
-    }, flyBody)
+    local upDownRow = tao("Frame", { Size = UDim2.new(1, 0, 0, 30), BackgroundTransparency = 1 }, flyBody)
     tao("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, upDownRow)
 
     local btnUp = tao("TextButton", {
@@ -845,61 +831,29 @@ local function taoGiaoDienFly()
     boGoc(flyToggleBtn, 8)
     vien(flyToggleBtn, Mau.Do, 1, 0.4)
 
-    local speedControlRow = tao("Frame", {
-        Size = UDim2.new(1, 0, 0, 28),
-        BackgroundTransparency = 1,
-    }, flyBody)
+    local speedControlRow = tao("Frame", { Size = UDim2.new(1, 0, 0, 28), BackgroundTransparency = 1 }, flyBody)
     tao("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, speedControlRow)
 
-    local btnGiam = tao("TextButton", {
-        Size = UDim2.new(0.3, 0, 1, 0),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.25,
-        Text = "(-)",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 11,
-        AutoButtonColor = false,
-    }, speedControlRow)
+    local btnGiam = tao("TextButton", { Size = UDim2.new(0.3, 0, 1, 0), BackgroundColor3 = Mau.NutBam, BackgroundTransparency = 0.25, Text = "(-)", TextColor3 = Mau.Den, Font = Enum.Font.GothamBold, TextSize = 11, AutoButtonColor = false }, speedControlRow)
     boGoc(btnGiam, 6)
     vien(btnGiam, Mau.Mo, 1, 0.5)
 
-    local lblSpeed = tao("TextLabel", {
-        Size = UDim2.new(0.38, 0, 1, 0),
-        BackgroundTransparency = 1,
-        Text = "Tốc: 50",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 11,
-    }, speedControlRow)
+    local lblSpeed = tao("TextLabel", { Size = UDim2.new(0.38, 0, 1, 0), BackgroundTransparency = 1, Text = "Tốc: 50", TextColor3 = Mau.Den, Font = Enum.Font.GothamBold, TextSize = 11 }, speedControlRow)
 
-    local btnTang = tao("TextButton", {
-        Size = UDim2.new(0.3, 0, 1, 0),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.25,
-        Text = "(+)",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 11,
-        AutoButtonColor = false,
-    }, speedControlRow)
+    local btnTang = tao("TextButton", { Size = UDim2.new(0.3, 0, 1, 0), BackgroundColor3 = Mau.NutBam, BackgroundTransparency = 0.25, Text = "(+)", TextColor3 = Mau.Den, Font = Enum.Font.GothamBold, TextSize = 11, AutoButtonColor = false }, speedControlRow)
     boGoc(btnTang, 6)
     vien(btnTang, Mau.Mo, 1, 0.5)
 
     btnTang.MouseButton1Click:Connect(function()
-        hieuDung(btnTang, 0.1, {BackgroundColor3 = Mau.DoDam})
-        task.delay(0.1, function() hieuDung(btnTang, 0.1, {BackgroundColor3 = Mau.NutBam}) end)
         flySpeed = math.min(500, flySpeed + 25)
         lblSpeed.Text = "Tốc: " .. flySpeed
-        hienThongBao("Tốc độ bay V3: " .. flySpeed)
+        hienThongBao("Tốc độ bay: " .. flySpeed)
     end)
 
     btnGiam.MouseButton1Click:Connect(function()
-        hieuDung(btnGiam, 0.1, {BackgroundColor3 = Mau.DoDam})
-        task.delay(0.1, function() hieuDung(btnGiam, 0.1, {BackgroundColor3 = Mau.NutBam}) end)
         flySpeed = math.max(10, flySpeed - 25)
         lblSpeed.Text = "Tốc: " .. flySpeed
-        hienThongBao("Tốc độ bay V3: " .. flySpeed)
+        hienThongBao("Tốc độ bay: " .. flySpeed)
     end)
 
     local function toggleFly(state)
@@ -907,7 +861,7 @@ local function taoGiaoDienFly()
         if flyEnabled then
             flyToggleBtn.Text = "Fly: ON"
             flyToggleBtn.BackgroundColor3 = Mau.DoDam
-            hienThongBao("Đã Bật chế độ Fly V3 (XNEO)!")
+            hienThongBao("Đã Bật chế độ Fly V3!")
 
             if flyConnection then flyConnection:Disconnect() end
             flyConnection = RunService.RenderStepped:Connect(function(dt)
@@ -920,17 +874,13 @@ local function taoGiaoDienFly()
                     local cam = workspace.CurrentCamera
                     local moveDir = hum.MoveDirection
                     local vel = Vector3.new(0, 0, 0)
-
                     local camCF = cam.CFrame
+
                     if moveDir.Magnitude > 0 then
                         vel = (camCF.LookVector * moveDir.Z + camCF.RightVector * moveDir.X).Unit * flySpeed
                     end
-
-                    if flyUpState then
-                        vel = vel + Vector3.new(0, flySpeed, 0)
-                    elseif flyDownState then
-                        vel = vel - Vector3.new(0, flySpeed, 0)
-                    end
+                    if flyUpState then vel = vel + Vector3.new(0, flySpeed, 0)
+                    elseif flyDownState then vel = vel - Vector3.new(0, flySpeed, 0) end
 
                     hrp.AssemblyLinearVelocity = vel
                 end
@@ -938,7 +888,7 @@ local function taoGiaoDienFly()
         else
             flyToggleBtn.Text = "Fly: OFF"
             flyToggleBtn.BackgroundColor3 = Mau.NutBam
-            hienThongBao("Đã Tắt chế độ Fly V3!")
+            hienThongBao("Đã Tắt chế độ Fly!")
             if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
             local char = nguoiDung.Character
             local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -946,10 +896,7 @@ local function taoGiaoDienFly()
         end
     end
 
-    flyToggleBtn.MouseButton1Click:Connect(function()
-        toggleFly(not flyEnabled)
-    end)
-
+    flyToggleBtn.MouseButton1Click:Connect(function() toggleFly(not flyEnabled) end)
     return flyGui
 end
 
@@ -1011,529 +958,194 @@ local function rejoinGame()
     TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, nguoiDung)
 end
 
-local function moBangChonPlayer(parent)
-    local frameChon = tao("Frame", {
-        Size = UDim2.new(1, 0, 0, 230),
-        BackgroundColor3 = Color3.fromRGB(230, 230, 240),
-        BackgroundTransparency = 0.45,
-        BorderSizePixel = 0,
-    }, parent)
-    boGoc(frameChon, 10)
-    vien(frameChon, Mau.Do, 1, 0.4)
-
-    local searchBox = tao("TextBox", {
-        Position = UDim2.new(0, 10, 0, 10),
-        Size = UDim2.new(1, -20, 0, 30),
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+-- Khung chọn cấu hình Base có nút xổ `^` thu gọn mượt mà
+local function taoKhungBaseDropdown(parent, baseKey, tenBaseLabel)
+    local mainFrame = tao("Frame", {
+        Size = UDim2.new(1, 0, 0, 42),
+        BackgroundColor3 = Mau.NutBam,
         BackgroundTransparency = 0.25,
-        TextColor3 = Mau.Den,
-        PlaceholderText = "🔍 Nhập tên người chơi để tìm...",
-        PlaceholderColor3 = Mau.Mo,
-        Text = "",
-        TextSize = 11,
-        Font = Enum.Font.Gotham,
-    }, frameChon)
-    boGoc(searchBox, 6)
-    vien(searchBox, Mau.Do, 1, 0.5)
+        ClipsDescendants = true,
+    }, parent)
+    boGoc(mainFrame, 10)
+    vien(mainFrame, Mau.Do, 1, 0.4)
 
-    local scrollPlayers = tao("ScrollingFrame", {
-        Position = UDim2.new(0, 10, 0, 50),
-        Size = UDim2.new(1, -20, 1, -60),
+    local btnSave = tao("TextButton", {
+        Size = UDim2.new(0.65, -10, 0, 32),
+        Position = UDim2.new(0, 8, 0, 5),
+        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+        BackgroundTransparency = 0.3,
+        Text = "📍 Lưu Tọa Độ " .. tenBaseLabel,
+        TextColor3 = Mau.Den,
+        Font = Enum.Font.GothamBold,
+        TextSize = 11,
+        AutoButtonColor = false,
+    }, mainFrame)
+    boGoc(btnSave, 6)
+    vien(btnSave, Mau.Do, 1, 0.5)
+
+    local btnToggle = tao("TextButton", {
+        Size = UDim2.new(0.3, 0, 0, 32),
+        Position = UDim2.new(0.67, 0, 0, 5),
+        BackgroundColor3 = Mau.Do,
+        BackgroundTransparency = 0.2,
+        Text = "Chế độ ^",
+        TextColor3 = Mau.Trang,
+        Font = Enum.Font.GothamBold,
+        TextSize = 11,
+        AutoButtonColor = false,
+    }, mainFrame)
+    boGoc(btnToggle, 6)
+
+    local dropContent = tao("Frame", {
+        Position = UDim2.new(0, 8, 0, 42),
+        Size = UDim2.new(1, -16, 0, 115),
         BackgroundTransparency = 1,
-        ScrollBarThickness = 3,
-        ScrollBarImageColor3 = Mau.Do,
-        CanvasSize = UDim2.new(0, 0, 0, 0),
-        AutomaticCanvasSize = Enum.AutomaticSize.Y,
-    }, frameChon)
+    }, mainFrame)
+    tao("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }, dropContent)
+
+    local optModeRow = tao("Frame", { Size = UDim2.new(1, 0, 0, 30), BackgroundTransparency = 1 }, dropContent)
+    tao("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, optModeRow)
+
+    local btnRun = tao("TextButton", { Size = UDim2.new(0.32, 0, 1, 0), BackgroundColor3 = Mau.NutBam, Text = "🚀 Chạy", TextColor3 = Mau.Den, Font = Enum.Font.GothamBold, TextSize = 10, AutoButtonColor = false }, optModeRow)
+    boGoc(btnRun, 6); vien(btnRun, Mau.Mo, 1, 0.5)
+
+    local btnFly = tao("TextButton", { Size = UDim2.new(0.32, 0, 1, 0), BackgroundColor3 = Mau.NutBam, Text = "✈️ Bay", TextColor3 = Mau.Den, Font = Enum.Font.GothamBold, TextSize = 10, AutoButtonColor = false }, optModeRow)
+    boGoc(btnFly, 6); vien(btnFly, Mau.Mo, 1, 0.5)
+
+    local btnTele = tao("TextButton", { Size = UDim2.new(0.32, 0, 1, 0), BackgroundColor3 = Mau.DoDam, Text = "⚡ Tele", TextColor3 = Mau.Trang, Font = Enum.Font.GothamBold, TextSize = 10, AutoButtonColor = false }, optModeRow)
+    boGoc(btnTele, 6); vien(btnTele, Mau.Trang, 1, 0.4)
+
+    local speedFrame = tao("Frame", { Size = UDim2.new(1, 0, 0, 32), BackgroundColor3 = Mau.NutBam, BackgroundTransparency = 0.3 }, dropContent)
+    boGoc(speedFrame, 6)
+
+    tao("TextLabel", { Position = UDim2.new(0, 8, 0, 0), Size = UDim2.new(0.6, 0, 1, 0), BackgroundTransparency = 1, Text = "⚡ Tốc độ bay (1-500):", TextColor3 = Mau.Den, Font = Enum.Font.GothamBold, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Left }, speedFrame)
+
+    local speedBox = tao("TextBox", { Position = UDim2.new(0.62, 0, 0.15, 0), Size = UDim2.new(0.35, 0, 0.7, 0), BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.2, Text = "100", TextColor3 = Mau.Do, Font = Enum.Font.GothamBold, TextSize = 11 }, speedFrame)
+    boGoc(speedBox, 6)
+
+    local btnGoNow = tao("TextButton", { Size = UDim2.new(1, 0, 0, 32), BackgroundColor3 = Mau.DoDam, Text = "▶️ VỀ " .. string.upper(tenBaseLabel) .. " NGAY", TextColor3 = Mau.Trang, Font = Enum.Font.GothamBold, TextSize = 11, AutoButtonColor = false }, dropContent)
+    boGoc(btnGoNow, 6)
+
+    local isExpanded = false
+    btnToggle.MouseButton1Click:Connect(function()
+        isExpanded = not isExpanded
+        hieuDung(mainFrame, 0.25, { Size = UDim2.new(1, 0, 0, isExpanded and 165 or 42) })
+        btnToggle.Text = isExpanded and "Thu gọn v" or "Chế độ ^"
+    end)
+
+    local function updateModeButtons(selMode)
+        baseModes[baseKey] = selMode
+        btnRun.BackgroundColor3 = (selMode == "Run") and Mau.DoDam or Mau.NutBam
+        btnRun.TextColor3 = (selMode == "Run") and Mau.Trang or Mau.Den
+        btnFly.BackgroundColor3 = (selMode == "Fly") and Mau.DoDam or Mau.NutBam
+        btnFly.TextColor3 = (selMode == "Fly") and Mau.Trang or Mau.Den
+        btnTele.BackgroundColor3 = (selMode == "Tele") and Mau.DoDam or Mau.NutBam
+        btnTele.TextColor3 = (selMode == "Tele") and Mau.Trang or Mau.Den
+        hienThongBao("Đã chọn chế độ: " .. selMode .. " cho " .. tenBaseLabel)
+    end
+
+    btnRun.MouseButton1Click:Connect(function() updateModeButtons("Run") end)
+    btnFly.MouseButton1Click:Connect(function() updateModeButtons("Fly") end)
+    btnTele.MouseButton1Click:Connect(function() updateModeButtons("Tele") end)
+
+    speedBox.FocusLost:Connect(function()
+        local val = tonumber(speedBox.Text) or 100
+        val = math.clamp(val, 1, 500)
+        speedBox.Text = tostring(val)
+        baseFlySpeeds[baseKey] = val
+    end)
+
+    btnSave.MouseButton1Click:Connect(function()
+        local char = nguoiDung.Character or nguoiDung.CharacterAdded:Wait()
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            basePositions[baseKey] = hrp.Position
+            btnSave.Text = "📍 " .. tenBaseLabel .. ": Đã Lưu"
+            hienThongBao("Đã lưu tọa độ " .. tenBaseLabel .. "!")
+        end
+    end)
+
+    btnGoNow.MouseButton1Click:Connect(function() veBaseTheoCauHinh(baseKey, tenBaseLabel) end)
+	end
+-- ==========================================
+-- SCRIPT: √12kientomato MENU M1 PRO (PHẦN 5A/5)
+-- ==========================================
+local function moBangChonPlayer(parent)
+    local frameChon = tao("Frame", { Size = UDim2.new(1, 0, 0, 230), BackgroundColor3 = Color3.fromRGB(230, 230, 240), BackgroundTransparency = 0.45, BorderSizePixel = 0 }, parent)
+    boGoc(frameChon, 10); vien(frameChon, Mau.Do, 1, 0.4)
+
+    local searchBox = tao("TextBox", { Position = UDim2.new(0, 10, 0, 10), Size = UDim2.new(1, -20, 0, 30), BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.25, TextColor3 = Mau.Den, PlaceholderText = "🔍 Nhập tên người chơi...", PlaceholderColor3 = Mau.Mo, Text = "", TextSize = 11, Font = Enum.Font.Gotham }, frameChon)
+    boGoc(searchBox, 6); vien(searchBox, Mau.Do, 1, 0.5)
+
+    local scrollPlayers = tao("ScrollingFrame", { Position = UDim2.new(0, 10, 0, 50), Size = UDim2.new(1, -20, 1, -60), BackgroundTransparency = 1, ScrollBarThickness = 3, ScrollBarImageColor3 = Mau.Do, CanvasSize = UDim2.new(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y }, frameChon)
     tao("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }, scrollPlayers)
 
     local function taiDanhSach(filterText)
-        for _, child in ipairs(scrollPlayers:GetChildren()) do
-            if child:IsA("TextButton") then child:Destroy() end
-        end
-
+        for _, child in ipairs(scrollPlayers:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= nguoiDung then
                 if filterText == "" or string.find(string.lower(p.Name), string.lower(filterText)) then
-                    local pBtn = tao("TextButton", {
-                        Size = UDim2.new(1, 0, 0, 32),
-                        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-                        BackgroundTransparency = 0.25,
-                        Text = "👤 " .. p.Name,
-                        TextColor3 = Mau.Den,
-                        Font = Enum.Font.GothamBold,
-                        TextSize = 11,
-                        AutoButtonColor = false,
-                        TextXAlignment = Enum.TextXAlignment.Left,
-                    }, scrollPlayers)
-                    boGoc(pBtn, 6)
-                    vien(pBtn, Mau.Do, 1, 0.4)
-
-                    pBtn.MouseButton1Click:Connect(function()
-                        hieuDung(pBtn, 0.1, {BackgroundColor3 = Mau.DoDam})
-                        task.delay(0.1, function() hieuDung(pBtn, 0.1, {BackgroundColor3 = Color3.fromRGB(255, 255, 255)}) end)
-                        bayToiPlayer(p)
-                    end)
+                    local pBtn = tao("TextButton", { Size = UDim2.new(1, 0, 0, 32), BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.25, Text = "👤 " .. p.Name, TextColor3 = Mau.Den, Font = Enum.Font.GothamBold, TextSize = 11, AutoButtonColor = false, TextXAlignment = Enum.TextXAlignment.Left }, scrollPlayers)
+                    boGoc(pBtn, 6); vien(pBtn, Mau.Do, 1, 0.4)
+                    pBtn.MouseButton1Click:Connect(function() bayToiPlayer(p) end)
                 end
             end
         end
     end
 
     taiDanhSach("")
-    searchBox:GetPropertyChangedSignal("Text"):Connect(function()
-        taiDanhSach(searchBox.Text)
+    searchBox:GetPropertyChangedSignal("Text"):Connect(function() taiDanhSach(searchBox.Text) end)
+end
+
+local function xayDungTabTeleport(parent)
+    tao("TextLabel", { Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1, Text = "🎯 CHỌN NGƯỜI CHƠI ĐỂ BAY (TỐC ĐỘ 150):", TextColor3 = Mau.Mo, Font = Enum.Font.GothamBold, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Left }, parent)
+    moBangChonPlayer(parent)
+
+    local stopFlyBtn = tao("TextButton", { Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = Mau.Do, BackgroundTransparency = 0.1, Text = "🛑 DỪNG KHẨN CẤP BAY", TextColor3 = Mau.Trang, Font = Enum.Font.GothamBold, TextSize = 12, AutoButtonColor = false }, parent)
+    boGoc(stopFlyBtn, 8); vien(stopFlyBtn, Mau.Trang, 1, 0.3)
+    stopFlyBtn.MouseButton1Click:Connect(function() stopWalking(); hienThongBao("🛑 Đã dừng khẩn cấp bay!") end)
+end
+
+local function xayDungTabAuto(parent)
+    taoKhungBaseDropdown(parent, "Base1", "Nhà 1")
+    taoKhungBaseDropdown(parent, "Base2", "Nhà 2")
+
+    local tachBtn = tao("TextButton", { Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = Mau.NutBam, BackgroundTransparency = 0.25, Text = "📌 Tách Bảng Điều Khiển Nhanh Ra Ngoài", TextColor3 = Mau.Den, Font = Enum.Font.GothamBold, TextSize = 11, AutoButtonColor = false }, parent)
+    boGoc(tachBtn, 8); vien(tachBtn, Mau.Do, 1, 0.4)
+
+    tachBtn.MouseButton1Click:Connect(function()
+        isPoppedOut = not isPoppedOut
+        PopoutFrame.Visible = isPoppedOut
+        tachBtn.Text = isPoppedOut and "📌 Đã Tách Bảng Ra Ngoài" or "📌 Tách Bảng Điều Khiển Nhanh Ra Ngoài"
+        hienThongBao(isPoppedOut and "Đã tách bảng thành công!" or "Đã thu hồi bảng về Menu!")
     end)
 end
 
 local function xayDungTabTools(parent)
-    local espBtn = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 36),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.25,
-        Text = "👁️ Định Vị Player & Khoảng Cách: OFF",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 11,
-        AutoButtonColor = false,
-    }, parent)
-    boGoc(espBtn, 8)
-    vien(espBtn, Mau.Do, 1, 0.4)
+    local espBtn = tao("TextButton", { Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = Mau.NutBam, BackgroundTransparency = 0.25, Text = "👁️ Định Vị Player & Khoảng Cách: OFF", TextColor3 = Mau.Den, Font = Enum.Font.GothamBold, TextSize = 11, AutoButtonColor = false }, parent)
+    boGoc(espBtn, 8); vien(espBtn, Mau.Do, 1, 0.4)
 
-    local noclipBtn = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 36),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.25,
-        Text = "👻 Đi Xuyên Tường (Noclip): OFF",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 11,
-        AutoButtonColor = false,
-    }, parent)
-    boGoc(noclipBtn, 8)
-    vien(noclipBtn, Mau.Do, 1, 0.4)
+    local noclipBtn = tao("TextButton", { Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = Mau.NutBam, BackgroundTransparency = 0.25, Text = "👻 Đi Xuyên Tường (Noclip): OFF", TextColor3 = Mau.Den, Font = Enum.Font.GothamBold, TextSize = 11, AutoButtonColor = false }, parent)
+    boGoc(noclipBtn, 8); vien(noclipBtn, Mau.Do, 1, 0.4)
 
-    local flyMenuBtn = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 36),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.25,
-        Text = "✈️ Mở / Đóng Bảng Fly V3",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 11,
-        AutoButtonColor = false,
-    }, parent)
-    boGoc(flyMenuBtn, 8)
-    vien(flyMenuBtn, Mau.Do, 1, 0.4)
+    local flyMenuBtn = tao("TextButton", { Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = Mau.NutBam, BackgroundTransparency = 0.25, Text = "✈️ Mở / Đóng Bảng Fly V3", TextColor3 = Mau.Den, Font = Enum.Font.GothamBold, TextSize = 11, AutoButtonColor = false }, parent)
+    boGoc(flyMenuBtn, 8); vien(flyMenuBtn, Mau.Do, 1, 0.4)
 
-    local speedFrame = tao("Frame", {
-        Size = UDim2.new(1, 0, 0, 45),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.25,
-    }, parent)
-    boGoc(speedFrame, 8)
-    vien(speedFrame, Mau.Do, 1, 0.4)
+    local speedToggleBtn = tao("TextButton", { Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = Mau.NutBam, BackgroundTransparency = 0.25, Text = "⚡ Bật Tốc Độ Chạy (Speed): OFF", TextColor3 = Mau.Den, Font = Enum.Font.GothamBold, TextSize = 11, AutoButtonColor = false }, parent)
+    boGoc(speedToggleBtn, 8); vien(speedToggleBtn, Mau.Do, 1, 0.4)
 
-    tao("TextLabel", {
-        Position = UDim2.new(0, 10, 0, 4),
-        Size = UDim2.new(1, -20, 0, 20),
-        BackgroundTransparency = 1,
-        Text = "⚡ Tốc Độ Chạy (Tối đa 500):",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 10,
-        TextXAlignment = Enum.TextXAlignment.Left,
-    }, speedFrame)
+    local hopBtn = tao("TextButton", { Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = Mau.NutBam, BackgroundTransparency = 0.25, Text = "🌐 Hop Server Ít Người", TextColor3 = Mau.Den, Font = Enum.Font.GothamBold, TextSize = 11, AutoButtonColor = false }, parent)
+    boGoc(hopBtn, 8); vien(hopBtn, Mau.Do, 1, 0.4)
 
-    local speedBox = tao("TextBox", {
-        Position = UDim2.new(0, 10, 0, 22),
-        Size = UDim2.new(1, -20, 0, 20),
-        BackgroundTransparency = 1,
-        Text = "50",
-        TextColor3 = Mau.Do,
-        Font = Enum.Font.GothamBold,
-        TextSize = 12,
-    }, speedFrame)
+    local rejoinBtn = tao("TextButton", { Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = Mau.NutBam, BackgroundTransparency = 0.25, Text = "🔄 Vào Lại Server (Rejoin)", TextColor3 = Mau.Den, Font = Enum.Font.GothamBold, TextSize = 11, AutoButtonColor = false }, parent)
+    boGoc(rejoinBtn, 8); vien(rejoinBtn, Mau.Do, 1, 0.4)
 
-    speedBox.FocusLost:Connect(function()
-        local val = tonumber(speedBox.Text)
-        if val then
-            speedValue = math.clamp(val, 16, 500)
-            speedBox.Text = tostring(speedValue)
-            if speedEnabled then toggleSpeed(true, speedValue) end
-        end
-    end)
-
-    local speedToggleBtn = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 36),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.25,
-        Text = "⚡ Bật Tốc Độ Chạy (Speed): OFF",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 11,
-        AutoButtonColor = false,
-    }, parent)
-    boGoc(speedToggleBtn, 8)
-    vien(speedToggleBtn, Mau.Do, 1, 0.4)
-
-    local hopBtn = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 36),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.25,
-        Text = "🌐 Hop Server Ít Người",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 11,
-        AutoButtonColor = false,
-    }, parent)
-    boGoc(hopBtn, 8)
-    vien(hopBtn, Mau.Do, 1, 0.4)
-
-    local rejoinBtn = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 36),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.25,
-        Text = "🔄 Vào Lại Server (Rejoin)",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 11,
-        AutoButtonColor = false,
-    }, parent)
-    boGoc(rejoinBtn, 8)
-    vien(rejoinBtn, Mau.Do, 1, 0.4)
-
-    espBtn.MouseButton1Click:Connect(function()
-        espEnabled = not espEnabled
-        espBtn.Text = espEnabled and "👁️ Định Vị Player & Khoảng Cách: ON" or "👁️ Định Vị Player & Khoảng Cách: OFF"
-        toggleEsp(espEnabled)
-    end)
-
-    noclipBtn.MouseButton1Click:Connect(function()
-        noclipEnabled = not noclipEnabled
-        noclipBtn.Text = noclipEnabled and "👻 Đi Xuyên Tường (Noclip): ON" or "👻 Đi Xuyên Tường (Noclip): OFF"
-        toggleNoclip(noclipEnabled)
-    end)
-
-    flyMenuBtn.MouseButton1Click:Connect(function()
-        flyMenuInstance.Visible = not flyMenuInstance.Visible
-        hienThongBao(flyMenuInstance.Visible and "Đã mở bảng Fly V3!" or "Đã đóng bảng Fly V3!")
-    end)
-
-    speedToggleBtn.MouseButton1Click:Connect(function()
-        speedEnabled = not speedEnabled
-        speedToggleBtn.Text = speedEnabled and "⚡ Bật Tốc Độ Chạy (Speed): ON" or "⚡ Bật Tốc Độ Chạy (Speed): OFF"
-        toggleSpeed(speedEnabled, speedValue)
-    end)
-
+    espBtn.MouseButton1Click:Connect(function() espEnabled = not espEnabled; espBtn.Text = espEnabled and "👁️ Định Vị Player: ON" or "👁️ Định Vị Player: OFF"; toggleEsp(espEnabled) end)
+    noclipBtn.MouseButton1Click:Connect(function() noclipEnabled = not noclipEnabled; noclipBtn.Text = noclipEnabled and "👻 Đi Xuyên Tường: ON" or "👻 Đi Xuyên Tường: OFF"; toggleNoclip(noclipEnabled) end)
+    flyMenuBtn.MouseButton1Click:Connect(function() flyMenuInstance.Visible = not flyMenuInstance.Visible end)
+    speedToggleBtn.MouseButton1Click:Connect(function() speedEnabled = not speedEnabled; speedToggleBtn.Text = speedEnabled and "⚡ Bật Tốc Độ Chạy: ON" or "⚡ Bật Tốc Độ Chạy: OFF"; toggleSpeed(speedEnabled, speedValue) end)
     hopBtn.MouseButton1Click:Connect(hopServer)
     rejoinBtn.MouseButton1Click:Connect(rejoinGame)
-	end
--- ==========================================
--- SCRIPT: √12kientomato MENU M1 PRO (PHẦN 5A/5)
--- ==========================================
-local function xayDungTabTeleport(parent)
-    tao("TextLabel", {
-        Size = UDim2.new(1, 0, 0, 20),
-        BackgroundTransparency = 1,
-        Text = "🎯 CHỌN NGƯỜI CHƠI ĐỂ BAY (TỐC ĐỘ 150):",
-        TextColor3 = Mau.Mo,
-        Font = Enum.Font.GothamBold,
-        TextSize = 10,
-        TextXAlignment = Enum.TextXAlignment.Left,
-    }, parent)
-
-    moBangChonPlayer(parent)
-
-    local stopFlyBtn = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 36),
-        BackgroundColor3 = Mau.Do,
-        BackgroundTransparency = 0.1,
-        Text = "🛑 DỪNG KHẨN CẤP BAY",
-        TextColor3 = Mau.Trang,
-        Font = Enum.Font.GothamBold,
-        TextSize = 12,
-        AutoButtonColor = false,
-    }, parent)
-    boGoc(stopFlyBtn, 8)
-    vien(stopFlyBtn, Mau.Trang, 1, 0.3)
-
-    stopFlyBtn.MouseButton1Click:Connect(function()
-        stopWalking()
-        hienThongBao("🛑 Đã dừng khẩn cấp bay!")
-    end)
-end
-
-local function xayDungTabAuto(parent)
-    local save1 = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 36),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.25,
-        Text = "📍 Lưu Tọa Độ Vị Trí 1 (Nhà 1)",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 12,
-        AutoButtonColor = false,
-    }, parent)
-    boGoc(save1, 8)
-    vien(save1, Mau.Do, 1, 0.4)
-
-    local menuBase1 = tao("Frame", {
-        Size = UDim2.new(1, 0, 0, 40),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.35,
-    }, parent)
-    boGoc(menuBase1, 8)
-    vien(menuBase1, Mau.Do, 1, 0.5)
-
-    local b1Run = tao("TextButton", {
-        Size = UDim2.new(0.31, 0, 0, 30),
-        Position = UDim2.new(0.01, 0, 0.5, -15),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.2,
-        Text = "🚀 Chạy",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 10,
-        AutoButtonColor = false,
-    }, menuBase1)
-    boGoc(b1Run, 6)
-    vien(b1Run, Mau.Mo, 1, 0.5)
-
-    local b1Fly = tao("TextButton", {
-        Size = UDim2.new(0.31, 0, 0, 30),
-        Position = UDim2.new(0.34, 0, 0.5, -15),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.2,
-        Text = "✈️ Bay",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 10,
-        AutoButtonColor = false,
-    }, menuBase1)
-    boGoc(b1Fly, 6)
-    vien(b1Fly, Mau.Mo, 1, 0.5)
-
-    local b1Tele = tao("TextButton", {
-        Size = UDim2.new(0.31, 0, 0, 30),
-        Position = UDim2.new(0.67, 0, 0.5, -15),
-        BackgroundColor3 = Mau.DoDam,
-        BackgroundTransparency = 0.15,
-        Text = "⚡ Tele",
-        TextColor3 = Mau.Trang,
-        Font = Enum.Font.GothamBold,
-        TextSize = 10,
-        AutoButtonColor = false,
-    }, menuBase1)
-    boGoc(b1Tele, 6)
-    vien(b1Tele, Mau.Trang, 1, 0.4)
-
-    -- Khung điều chỉnh tốc độ bay về Base 1 (1 - 500)
-    local speedBayBase1Frame = tao("Frame", {
-        Size = UDim2.new(1, 0, 0, 35),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.3,
-    }, parent)
-    boGoc(speedBayBase1Frame, 8)
-    vien(speedBayBase1Frame, Mau.Do, 1, 0.4)
-
-    tao("TextLabel", {
-        Position = UDim2.new(0, 10, 0, 0),
-        Size = UDim2.new(0.6, 0, 1, 0),
-        BackgroundTransparency = 1,
-        Text = "⚡ Tốc độ Bay Về Nhà 1 (1-500):",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 10,
-        TextXAlignment = Enum.TextXAlignment.Left,
-    }, speedBayBase1Frame)
-
-    local speedBayBase1Box = tao("TextBox", {
-        Position = UDim2.new(0.65, 0, 0.15, 0),
-        Size = UDim2.new(0.3, 0, 0.7, 0),
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-        BackgroundTransparency = 0.2,
-        Text = "100",
-        TextColor3 = Mau.Do,
-        Font = Enum.Font.GothamBold,
-        TextSize = 12,
-    }, speedBayBase1Frame)
-    boGoc(speedBayBase1Box, 6)
-
-    local save2 = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 36),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.25,
-        Text = "📍 Lưu Tọa Độ Vị Trí 2 (Nhà 2)",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 12,
-        AutoButtonColor = false,
-    }, parent)
-    boGoc(save2, 8)
-    vien(save2, Mau.Do, 1, 0.4)
-
-    local menuBase2 = tao("Frame", {
-        Size = UDim2.new(1, 0, 0, 40),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.35,
-    }, parent)
-    boGoc(menuBase2, 8)
-    vien(menuBase2, Mau.Do, 1, 0.5)
-
-    local b2Run = tao("TextButton", {
-        Size = UDim2.new(0.31, 0, 0, 30),
-        Position = UDim2.new(0.01, 0, 0.5, -15),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.2,
-        Text = "🚀 Chạy",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 10,
-        AutoButtonColor = false,
-    }, menuBase2)
-    boGoc(b2Run, 6)
-    vien(b2Run, Mau.Mo, 1, 0.5)
-
-    local b2Fly = tao("TextButton", {
-        Size = UDim2.new(0.31, 0, 0, 30),
-        Position = UDim2.new(0.34, 0, 0.5, -15),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.2,
-        Text = "✈️ Bay",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 10,
-        AutoButtonColor = false,
-    }, menuBase2)
-    boGoc(b2Fly, 6)
-    vien(b2Fly, Mau.Mo, 1, 0.5)
-
-    local b2Tele = tao("TextButton", {
-        Size = UDim2.new(0.31, 0, 0, 30),
-        Position = UDim2.new(0.67, 0, 0.5, -15),
-        BackgroundColor3 = Mau.DoDam,
-        BackgroundTransparency = 0.15,
-        Text = "⚡ Tele",
-        TextColor3 = Mau.Trang,
-        Font = Enum.Font.GothamBold,
-        TextSize = 10,
-        AutoButtonColor = false,
-    }, menuBase2)
-    boGoc(b2Tele, 6)
-    vien(b2Tele, Mau.Trang, 1, 0.4)
-
-    local speedBayBase2Frame = tao("Frame", {
-        Size = UDim2.new(1, 0, 0, 35),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.3,
-    }, parent)
-    boGoc(speedBayBase2Frame, 8)
-    vien(speedBayBase2Frame, Mau.Do, 1, 0.4)
-
-    tao("TextLabel", {
-        Position = UDim2.new(0, 10, 0, 0),
-        Size = UDim2.new(0.6, 0, 1, 0),
-        BackgroundTransparency = 1,
-        Text = "⚡ Tốc độ Bay Về Nhà 2 (1-500):",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 10,
-        TextXAlignment = Enum.TextXAlignment.Left,
-    }, speedBayBase2Frame)
-
-    local speedBayBase2Box = tao("TextBox", {
-        Position = UDim2.new(0.65, 0, 0.15, 0),
-        Size = UDim2.new(0.3, 0, 0.7, 0),
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-        BackgroundTransparency = 0.2,
-        Text = "100",
-        TextColor3 = Mau.Do,
-        Font = Enum.Font.GothamBold,
-        TextSize = 12,
-    }, speedBayBase2Frame)
-    boGoc(speedBayBase2Box, 6)
-
-    local tachBtn = tao("TextButton", {
-        Size = UDim2.new(1, 0, 0, 36),
-        BackgroundColor3 = Mau.NutBam,
-        BackgroundTransparency = 0.25,
-        Text = "📌 Tách Bảng Điều Khiển Nhanh Ra Ngoài",
-        TextColor3 = Mau.Den,
-        Font = Enum.Font.GothamBold,
-        TextSize = 12,
-        AutoButtonColor = false,
-    }, parent)
-    boGoc(tachBtn, 8)
-    vien(tachBtn, Mau.Do, 1, 0.4)
-
-    save1.MouseButton1Click:Connect(function()
-        local char = nguoiDung.Character or nguoiDung.CharacterAdded:Wait()
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            basePositions.Base1 = hrp.Position
-            save1.Text = "📍 Vị Trí 1: Đã lưu thành công"
-            hienThongBao("Đã lưu Tọa độ Nhà 1!")
-        end
-    end)
-
-    b1Run.MouseButton1Click:Connect(function()
-        if not basePositions.Base1 then hienThongBao("Chưa lưu Tọa độ Nhà 1!"); return end
-        startMoveTo(basePositions.Base1, "Nhà 1")
-    end)
-
-    b1Fly.MouseButton1Click:Connect(function()
-        if not basePositions.Base1 then hienThongBao("Chưa lưu Tọa độ Nhà 1!"); return end
-        local sVal = tonumber(speedBayBase1Box.Text) or 100
-        sVal = math.clamp(sVal, 1, 500)
-        speedBayBase1Box.Text = tostring(sVal)
-        flyHomeTo(basePositions.Base1, "Nhà 1", sVal)
-    end)
-
-    b1Tele.MouseButton1Click:Connect(function()
-        if not basePositions.Base1 then hienThongBao("Chưa lưu Tọa độ Nhà 1!"); return end
-        teleportHome(basePositions.Base1, "Nhà 1")
-    end)
-
-    save2.MouseButton1Click:Connect(function()
-        local char = nguoiDung.Character or nguoiDung.CharacterAdded:Wait()
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            basePositions.Base2 = hrp.Position
-            save2.Text = "📍 Vị Trí 2: Đã lưu thành công"
-            hienThongBao("Đã lưu Tọa độ Nhà 2!")
-        end
-    end)
-
-    b2Run.MouseButton1Click:Connect(function()
-        if not basePositions.Base2 then hienThongBao("Chưa lưu Tọa độ Nhà 2!"); return end
-        startMoveTo(basePositions.Base2, "Nhà 2")
-    end)
-
-    b2Fly.MouseButton1Click:Connect(function()
-        if not basePositions.Base2 then hienThongBao("Chưa lưu Tọa độ Nhà 2!"); return end
-        local sVal = tonumber(speedBayBase2Box.Text) or 100
-        sVal = math.clamp(sVal, 1, 500)
-        speedBayBase2Box.Text = tostring(sVal)
-        flyHomeTo(basePositions.Base2, "Nhà 2", sVal)
-    end)
-
-    b2Tele.MouseButton1Click:Connect(function()
-        if not basePositions.Base2 then hienThongBao("Chưa lưu Tọa độ Nhà 2!"); return end
-        teleportHome(basePositions.Base2, "Nhà 2")
-    end)
-
-    tachBtn.MouseButton1Click:Connect(function()
-        isPoppedOut = not isPoppedOut
-        if isPoppedOut then
-            PopoutFrame.Visible = true
-            tachBtn.Text = "📌 Đã Tách Bảng Ra Ngoài"
-            hienThongBao("Đã tách bảng thành công!")
-        else
-            PopoutFrame.Visible = false
-            tachBtn.Text = "📌 Tách Bảng Điều Khiển Nhanh Ra Ngoài"
-            hienThongBao("Đã thu hồi bảng về Menu!")
-        end
-    end)
 	end
 -- ==========================================
 -- SCRIPT: √12kientomato MENU M1 PRO (PHẦN 5B/5)
@@ -1544,7 +1156,7 @@ local danhSachTrang = {
         MoTa = "Chào mừng bạn đến với Kiên Script",
         Muc = {
             {Loai = "banner", TieuDe = "BLACK NEBULA M1", MoTa = "Giao diện trắng trong suốt tối ưu — by Kiên"},
-            {Loai = "info", TieuDe = "TRẠNG THÁI", MoTa = "Tự động tăng FPS, Nhặt đồ nhanh, Fly V3 & Điều hướng sẵn sàng."},
+            {Loai = "info", TieuDe = "TRẠNG THÁI", MoTa = "Anti-Lag Super, Auto Base Dropdown, Fly V3 XNEO sẵn sàng."},
         },
     },
     NHAN_DOI = {
@@ -1555,8 +1167,8 @@ local danhSachTrang = {
         },
     },
     AUTO_BASE = {
-        TieuDe = "TỰ ĐỘNG CHẠY / BAY / TELE VỊ TRÍ",
-        MoTa = "Lưu tọa độ nhà và chọn giả lập chạy, bay hoặc tele",
+        TieuDe = "TỰ ĐỘNG VỀ NHÀ (DROPDOWN ^)",
+        MoTa = "Tùy chọn Chạy / Bay (1-500) / Teleport",
         Muc = {
             {Loai = "autobase"},
         },
@@ -1601,28 +1213,8 @@ local function taoThe(tieuDeText, moTaText, chieuCao)
     boGoc(the, 12)
     vien(the, Mau.Mo, 1, 0.5)
 
-    tao("TextLabel", {
-        Position = UDim2.new(0, 14, 0, 11),
-        Size = UDim2.new(1, -28, 0, 20),
-        BackgroundTransparency = 1,
-        Text = tieuDeText,
-        TextColor3 = Mau.Den,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.GothamBold,
-        TextSize = 12,
-    }, the)
-
-    tao("TextLabel", {
-        Position = UDim2.new(0, 14, 0, 34),
-        Size = UDim2.new(1, -28, 0, 22),
-        BackgroundTransparency = 1,
-        Text = moTaText,
-        TextColor3 = Mau.Mo,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.Gotham,
-        TextSize = 10,
-        TextWrapped = true,
-    }, the)
+    tao("TextLabel", { Position = UDim2.new(0, 14, 0, 11), Size = UDim2.new(1, -28, 0, 20), BackgroundTransparency = 1, Text = tieuDeText, TextColor3 = Mau.Den, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBold, TextSize = 12 }, the)
+    tao("TextLabel", { Position = UDim2.new(0, 14, 0, 34), Size = UDim2.new(1, -28, 0, 22), BackgroundTransparency = 1, Text = moTaText, TextColor3 = Mau.Mo, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, TextSize = 10, TextWrapped = true }, the)
     return the
 end
 
@@ -1637,20 +1229,10 @@ local function hienThiTrang(tenTrang)
     for _, item in ipairs(duLieu.Muc) do
         if item.Loai == "banner" then
             local the = taoThe(item.TieuDe, item.MoTa, 90)
-            tao("Frame", {
-                Position = UDim2.new(0, 14, 1, -5),
-                Size = UDim2.new(0.45, 0, 0, 2),
-                BackgroundColor3 = Mau.Do,
-                BorderSizePixel = 0,
-            }, the)
+            tao("Frame", { Position = UDim2.new(0, 14, 1, -5), Size = UDim2.new(0.45, 0, 0, 2), BackgroundColor3 = Mau.Do, BorderSizePixel = 0 }, the)
         elseif item.Loai == "mult" then
             local the = taoThe(item.TieuDe, item.MoTa, 85)
-            local nutChua = tao("Frame", {
-                Position = UDim2.new(0, 14, 0, 52),
-                Size = UDim2.new(1, -28, 0, 28),
-                BackgroundTransparency = 1,
-            }, the)
-
+            local nutChua = tao("Frame", { Position = UDim2.new(0, 14, 0, 52), Size = UDim2.new(1, -28, 0, 28), BackgroundTransparency = 1 }, the)
             tao("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) }, nutChua)
 
             local heSo = {1, 2, 3, 4, 5}
@@ -1667,26 +1249,20 @@ local function hienThiTrang(tenTrang)
                     TextSize = 12,
                     AutoButtonColor = false,
                 }, nutChua)
-                boGoc(nutM, 6)
-                vien(nutM, Mau.Do, 1, 0.5)
+                boGoc(nutM, 6); vien(nutM, Mau.Do, 1, 0.5)
                 danhSachNut[val] = nutM
 
                 nutM.Activated:Connect(function()
                     kienCurrentMultiplier = val
-                    if val == 1 then hienThongBao("Chế độ 1x: Đã tắt (Bình thường)") else hienThongBao("Đã đổi sang: " .. val .. "x Đam!") end
+                    hienThongBao((val == 1) and "Chế độ 1x: Đã tắt" or ("Đã đổi sang: " .. val .. "x Đam!"))
                     for mVal, btn in pairs(danhSachNut) do
-                        if mVal == val then
-                            hieuDung(btn, 0.15, {BackgroundColor3 = Mau.DoDam})
-                            btn.TextColor3 = Mau.Trang
-                        else
-                            hieuDung(btn, 0.15, {BackgroundColor3 = Mau.NutBam})
-                            btn.TextColor3 = Mau.Den
-                        end
+                        btn.BackgroundColor3 = (mVal == val) and Mau.DoDam or Mau.NutBam
+                        btn.TextColor3 = (mVal == val) and Mau.Trang or Mau.Den
                     end
                 end)
             end
         elseif item.Loai == "autobase" then
-            local the = tao("Frame", { Size = UDim2.new(1, -4, 0, 310), BackgroundTransparency = 1 }, khungCuon)
+            local the = tao("Frame", { Size = UDim2.new(1, -4, 0, 380), BackgroundTransparency = 1 }, khungCuon)
             local container = tao("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1 }, the)
             tao("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, container)
             xayDungTabAuto(container)
@@ -1729,22 +1305,17 @@ for index, name in ipairs(tenNut) do
 
     nut.Activated:Connect(function()
         for _, other in pairs(cacNutBen) do
-            hieuDung(other, 0.15, {BackgroundColor3 = Color3.fromRGB(245, 245, 255)})
+            other.BackgroundColor3 = Color3.fromRGB(245, 245, 255)
             other.TextColor3 = Mau.Den
         end
-        hieuDung(nut, 0.15, {BackgroundColor3 = Mau.DoDam})
+        nut.BackgroundColor3 = Mau.DoDam
         nut.TextColor3 = Mau.Trang
         hienThiTrang(name)
     end)
 end
 
-nutMoMenu.MouseButton1Click:Connect(function()
-    menuChinh.Visible = not menuChinh.Visible
-end)
-
-nutDong.MouseButton1Click:Connect(function()
-    menuChinh.Visible = false
-end)
+nutMoMenu.MouseButton1Click:Connect(function() menuChinh.Visible = not menuChinh.Visible end)
+nutDong.MouseButton1Click:Connect(function() menuChinh.Visible = false end)
 
 local kienOldNameCall
 kienOldNameCall = hookmetamethod(game, "__namecall", function(self, ...)
